@@ -57,6 +57,7 @@
     let editingSkinIndex = null;
     let editingVgsBoxIdx = 0;
     let editingVgsRowIdx = null;
+    let editingVgsMode = 'new-row';
     let editingTreeTarget = null;
 
     let activeAudioInstance = null;
@@ -89,6 +90,19 @@
     function speechLabel(text) {
       return String(text || '').replace(/\s+/g, ' ').trim();
     }
+    function stripWrappingQuotes(value) {
+      const text = String(value ?? '').trim();
+      const pairs = [
+        ['"', '"'], ["'", "'"], ['“', '”'], ['‘', '’'], ['«', '»']
+      ];
+      for (const [open, close] of pairs) {
+        if (text.length >= 2 && text.startsWith(open) && text.endsWith(close)) {
+          return text.slice(open.length, -close.length).trim();
+        }
+      }
+      return text;
+    }
+
 
     function openDb() {
       if (!dbPromise) {
@@ -266,8 +280,79 @@
       });
     }
 
+
+    function ensureDefaultSkinsAndVoiceData(god) {
+      if (!god) return;
+      if (!Array.isArray(god.skins)) god.skins = [];
+
+      const norm = (value) => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+
+      let defaultIndex = god.skins.findIndex((skin) =>
+        skin && (
+          norm(skin.name) === 'PADRAO' ||
+          skin.id === 'skin_default' ||
+          skin.isDefault === true
+        )
+      );
+
+      if (defaultIndex < 0) {
+        god.skins.unshift({
+          id: 'skin_default_' + String(god.id || Date.now()),
+          name: 'Padrão',
+          tier: 'PADRÃO',
+          img: god.img || '',
+          dubber: god.dubber || '',
+          releaseDate: god.releaseDate || '',
+          voiceTree: [],
+          announcerTree: [],
+          vgsDatabase: []
+        });
+        defaultIndex = 0;
+      } else if (defaultIndex > 0) {
+        const defaultSkin = god.skins.splice(defaultIndex, 1)[0];
+        god.skins.unshift(defaultSkin);
+        defaultIndex = 0;
+      }
+
+      const defaultSkin = god.skins[0];
+      defaultSkin.name = defaultSkin.name || 'Padrão';
+      defaultSkin.tier = defaultSkin.tier || 'PADRÃO';
+      defaultSkin.img = defaultSkin.img || god.img || '';
+      if (!defaultSkin.id) {
+        defaultSkin.id = 'skin_default_' + String(god.id || Date.now());
+      }
+
+      // Copia dados legados somente para a aparência padrão.
+      // Mantém os dados antigos no objeto do deus como cópia de segurança.
+      if (!god._legacyVoiceMigratedToDefaultSkin) {
+        const fields = ['voiceTree', 'announcerTree', 'vgsDatabase'];
+        for (const field of fields) {
+          const oldData = god[field];
+          const currentData = defaultSkin[field];
+          const oldHasData = Array.isArray(oldData) && oldData.length > 0;
+          const currentHasData = Array.isArray(currentData) && currentData.length > 0;
+          if (oldHasData && !currentHasData) {
+            defaultSkin[field] = JSON.parse(JSON.stringify(oldData));
+          }
+        }
+        god._legacyVoiceMigratedToDefaultSkin = true;
+      }
+
+      for (const skin of god.skins) {
+        if (!skin) continue;
+        if (!Array.isArray(skin.voiceTree)) skin.voiceTree = [];
+        if (!Array.isArray(skin.announcerTree)) skin.announcerTree = [];
+        if (!Array.isArray(skin.vgsDatabase)) skin.vgsDatabase = [];
+      }
+    }
+
     function normalizeDatabases() {
       godsDatabase.forEach((g) => {
+        ensureDefaultSkinsAndVoiceData(g);
         ensureBoxIds(g.vgsDatabase);
         normalizeTree(g.voiceTree);
         normalizeTree(g.announcerTree);
@@ -280,7 +365,7 @@
       ensureBoxIds(vgsDatabase);
     }
 
-    function listAudios(obj) {
+        function listAudios(obj) {
       if (!obj) return [];
       const raw = [];
       if (Array.isArray(obj.audios)) raw.push.apply(raw, obj.audios);
@@ -478,7 +563,7 @@
         const container = document.createElement('div');
         container.className = 'god-card-container';
         container.innerHTML = `
-          <button class="card-edit-btn edit-only" onclick="openGodModal(event, ${idx})">✏️</button>
+          <button class="card-edit-btn edit-only" onclick="openGodModal(event, ${idx})"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
           <div class="smite-god-select-card" onclick="selectGod(${idx})">
             <div class="god-select-card-name">${escapeHtml(god.name)}</div>
           </div>
@@ -527,6 +612,7 @@
     function setStageBg(ref, opts) {
       const stage = document.getElementById('godStage');
       if (!stage) return;
+
       const fade = !!(opts && opts.fade) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const token = ++stageFadeSeq;
 
@@ -535,6 +621,14 @@
         const next = url
           ? 'linear-gradient(rgba(2,4,6,0.65), rgba(2,4,6,0.92)), url("' + String(url).replace(/"/g, '') + '")'
           : 'linear-gradient(rgba(2,4,6,0.65), rgba(2,4,6,0.92))';
+
+        if (
+          !stage.querySelector('.god-stage-crossfade') &&
+          stage.style.backgroundImage === next
+        ) {
+          return;
+        }
+
         if (!fade) {
           stage.style.backgroundImage = next;
           const layer = stage.querySelector('.god-stage-crossfade');
@@ -580,7 +674,10 @@
         };
         img.onload = startFade;
         img.onerror = () => {
-          if (token === stageFadeSeq) stage.style.backgroundImage = next;
+          if (token !== stageFadeSeq) return;
+          stage.style.backgroundImage = next;
+          const layer = stage.querySelector('.god-stage-crossfade');
+          if (layer) layer.remove();
         };
         img.src = url;
         if (img.complete && img.naturalWidth) startFade();
@@ -638,6 +735,13 @@
       } else if (tab === 'skins') {
         document.getElementById('tabBtnSkins').classList.add('active');
         document.getElementById('godTabSkins').style.display = 'flex';
+        // Recalcula a grade somente depois que a aba estiver visível.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const skinsGrid = document.getElementById('godSkinsGrid');
+            if (skinsGrid) fitGodSkinsGrid(skinsGrid);
+          });
+        });
         const currentSkin = (god.skins && god.skins[selectedSkinIdx]) ? god.skins[selectedSkinIdx] : god;
         setStageBg(currentSkin.img || god.img);
       } else if (tab === 'lore') {
@@ -652,7 +756,7 @@
       const cssClass = getTierCssClass(skin.tier);
       const selected = idx === selectedSkinIdx ? ' is-selected' : '';
       return `
-        <button class="card-edit-btn edit-only" onclick="openSkinModal(event, ${idx})">✏️</button>
+        <button class="card-edit-btn edit-only" onclick="openSkinModal(event, ${idx})"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
         <div class="smite-skin-card-wrapper">
           <div class="smite-skin-card${selected}" onclick="${clickFn}(${idx})">
             ${!isPadrao ? `<div class="skin-card-banner ${cssClass}"><span>${escapeHtml((skin.tier || '').toUpperCase())}</span></div>` : '<div></div>'}
@@ -669,26 +773,86 @@
       if (url) card.style.backgroundImage = 'linear-gradient(180deg, rgba(0,0,0,0.15) 30%, rgba(5,8,15,0.9) 100%), ' + url;
     }
 
+    function fitGodSkinsGrid(grid) {
+      // O layout da grade é controlado pelo CSS.
+      // Não medir nem alterar dimensões durante rolagem ou troca de abas.
+      return;
+    }
     function renderSkinsTab() {
       const grid = document.getElementById('godSkinsGrid');
       if (!grid) return;
-      grid.innerHTML = '';
+
       const god = godsDatabase[selectedGodIdx];
-      if (!god || !god.skins) return;
+      if (!god) {
+        grid.innerHTML = '';
+        return;
+      }
+
+      const defaultWasFirst = Array.isArray(god.skins) &&
+        god.skins.length > 0 &&
+        !!god.skins[0] &&
+        (
+          String(god.skins[0].name || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toUpperCase() === 'PADRAO' ||
+          god.skins[0].id === 'skin_default' ||
+          god.skins[0].isDefault === true
+        );
+
+      // Garante a aparência padrão antes de desenhar os cartões.
+      ensureDefaultSkinsAndVoiceData(god);
+
+      // Persiste somente se a lista precisou ser corrigida ou reorganizada.
+      if (!defaultWasFirst) {
+        saveStorageData().catch(() => {});
+      }
+
+      grid.innerHTML = '';
+
       god.skins.forEach((skin, idx) => {
+        if (!skin) return;
+
         const wrapper = document.createElement('div');
         wrapper.className = 'god-card-container';
         wrapper.innerHTML = skinCardHtml(skin, idx, 'applySkinBackground');
         paintSkinCard(wrapper, skin);
         grid.appendChild(wrapper);
       });
+
+      const fit = () => fitGodSkinsGrid(grid);
+      requestAnimationFrame(fit);
+
+      if (grid.dataset.fitRowsResizeBound !== 'true') {
+        grid.dataset.fitRowsResizeBound = 'true';
+        window.addEventListener('resize', () => requestAnimationFrame(fit));
+      }
     }
 
     function applySkinBackground(idx) {
+      const god = godsDatabase[selectedGodIdx];
+      const skin = god && god.skins ? god.skins[idx] : null;
+      if (!skin) return;
+
+      const grid = document.getElementById('godSkinsGrid');
+      if (grid) {
+        const cards = grid.querySelectorAll('.smite-skin-card');
+        cards.forEach((card) => {
+          card.classList.remove('is-selected');
+        });
+
+        const containers = grid.querySelectorAll('.god-card-container');
+        const container = containers[idx];
+        const selectedCard = container
+          ? container.querySelector('.smite-skin-card')
+          : null;
+
+        if (selectedCard) selectedCard.classList.add('is-selected');
+      }
+
       selectedSkinIdx = idx;
-      const skin = godsDatabase[selectedGodIdx].skins[idx];
-      if (skin) setStageBg(skin.img, { fade: true });
-      renderSkinsTab();
+      setStageBg(skin.img, { fade: true });
     }
 
     function renderVoicebankView() {
@@ -703,14 +867,20 @@
           : god.name;
       }
       if (imgEl) imgEl.src = mediaSync(currentSkin ? currentSkin.img : god.img) || '';
-      document.getElementById('vpDubber').innerText = currentSkin ? (currentSkin.dubber || god.dubber || '') : (god.dubber || '');
-      document.getElementById('vpReleaseDate').innerText = currentSkin ? (currentSkin.releaseDate || god.releaseDate || '') : (god.releaseDate || '');
+      const dubberEl = document.getElementById('vpDubber');
+      const releaseEl = document.getElementById('vpReleaseDate');
+      if (dubberEl) dubberEl.innerText = currentSkin
+        ? (currentSkin.dubber || god.dubber || '')
+        : (god.dubber || '');
+      if (releaseEl) releaseEl.innerText = currentSkin
+        ? (currentSkin.releaseDate || god.releaseDate || '')
+        : (god.releaseDate || '');
       refreshVpGodButtonLabel();
     }
 
     function refreshVpGodButtonLabel() {
       const god = godsDatabase[selectedGodIdx];
-      const hasSkinSelected = god && selectedSkinIdx > 0 && god.skins && god.skins[selectedSkinIdx];
+      const hasSkinSelected = god && selectedSkinIdx >= 0 && god.skins && god.skins[selectedSkinIdx];
       const btnGodElem = document.getElementById('btnVpGod');
       if (btnGodElem) btnGodElem.innerText = hasSkinSelected ? 'VOZ DA APARÊNCIA' : 'VOZ DO DEUS';
     }
@@ -740,12 +910,19 @@
       closeModal('vpHeaderModal');
     }
 
+
     function switchVPMode(mode) {
       currentVPMode = mode;
       document.querySelectorAll('.wiki-btn-menu').forEach((b) => b.classList.remove('active'));
       refreshVpGodButtonLabel();
 
-      const btnMap = { god: 'btnVpGod', skin: 'btnVpSkin', announcer: 'btnVpAnnouncer', vgs: 'btnVpVGS' };
+      const btnMap = {
+        god: 'btnVpGod',
+        skin: 'btnVpSkin',
+        announcer: 'btnVpAnnouncer',
+        vgs: 'btnVpVGS'
+      };
+
       if (btnMap[mode]) {
         const btn = document.getElementById(btnMap[mode]);
         if (btn) btn.classList.add('active');
@@ -754,33 +931,34 @@
       const vgsGroup = document.getElementById('vgsContainerGroup');
       const panel = document.getElementById('vpDynamicPanel');
       const skinPanel = document.getElementById('vpSkinSelectionPanel');
+      const editBtn = document.getElementById('globalPageEditBtn');
+
+      if (skinPanel) skinPanel.style.display = 'block';
+      if (skinPanel) renderVpSkinCardsPanel();
+      if (editBtn) editBtn.style.display = ['god', 'skin', 'announcer', 'vgs'].includes(mode) ? 'flex' : 'none';
 
       if (mode === 'vgs') {
-        vgsGroup.style.display = 'flex';
-        panel.style.display = 'none';
-        skinPanel.style.display = 'none';
+        if (vgsGroup) vgsGroup.style.display = 'flex';
+        if (panel) panel.style.display = 'none';
         renderVgsWikiTables();
         return;
       }
 
+      if (vgsGroup) vgsGroup.style.display = 'none';
+
       if (mode === 'skin') {
-        vgsGroup.style.display = 'none';
-        panel.style.display = 'none';
-        skinPanel.style.display = 'block';
-        renderVpSkinCardsPanel();
+        if (panel) panel.style.display = 'none';
         return;
       }
 
-      vgsGroup.style.display = 'none';
-      skinPanel.style.display = 'none';
-      panel.style.display = 'block';
+      if (panel) panel.style.display = 'block';
       renderVoiceTreePanel();
     }
 
     function renderVoiceTreePanel() {
       const god = godsDatabase[selectedGodIdx];
       if (!god) return;
-      const hasSkinSelected = (selectedSkinIdx > 0 && god.skins && god.skins[selectedSkinIdx]);
+      const hasSkinSelected = (selectedSkinIdx >= 0 && god.skins && god.skins[selectedSkinIdx]);
       const currentSkin = hasSkinSelected ? god.skins[selectedSkinIdx] : null;
       const targetName = currentSkin ? currentSkin.name.toUpperCase() : god.name;
       const container = document.getElementById('voiceTreeContainer');
@@ -801,7 +979,12 @@
       if (!audios.length) return '';
       return `<div class="vgs-audio-btns">${audios.map((ref, i) => {
         const lab = audios.length > 1 ? `${label} (${i + 1})` : label;
-        return `<button type="button" class="vgs-play-double-btn" data-audio-ref="${escapeHtml(ref)}" data-audio-label="${escapeHtml(lab)}" title="Áudio ${i + 1}">▶️</button>`;
+        return `<button type="button" class="vgs-play-double-btn" data-audio-ref="${escapeHtml(ref)}" data-audio-label="${escapeHtml(lab)}" title="Reproduzir áudio ${i + 1}" aria-label="Reproduzir áudio ${i + 1}">
+          <svg class="smite-audio-speaker" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/>
+            <path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>`;
       }).join('')}</div>`;
     }
 
@@ -813,7 +996,7 @@
           catBox.innerHTML = `
             <div class="tree-category-title">
               <span>${escapeHtml(node.title || '')}</span>
-              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')">✏️</button>
+              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
             </div>
             <div class="category-children-container" id="container_${node.id}"></div>
           `;
@@ -825,7 +1008,7 @@
           subBox.innerHTML = `
             <div class="tree-subcategory-title">
               <span>${escapeHtml(node.title || '')}</span>
-              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')">✏️</button>
+              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
             </div>
             <div class="subcategory-children-container" id="container_${node.id}"></div>
           `;
@@ -840,11 +1023,11 @@
           lineCard.innerHTML = `
             <div>
               ${hasTitle ? `<div style="color:var(--wiki-gold-title); font-size:0.88rem;">${escapeHtml(node.title)}</div>` : ''}
-              <div style="font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap;">"${escapeHtml(node.text || '')}"</div>
+              <div style="font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap;">${escapeHtml(node.text || '')}</div>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               ${audioButtonsHtml(node, label)}
-              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')">✏️</button>
+              <button class="smite-btn-sm edit-only" onclick="openTreeModalForEdit('${node.id}')"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
             </div>
           `;
           containerElement.appendChild(lineCard);
@@ -856,8 +1039,20 @@
       const god = godsDatabase[selectedGodIdx];
       const grid = document.getElementById('vpSkinCardsGrid');
       if (!grid || !god) return;
+
+      // Garante que a aparência padrão exista antes de montar os cartões.
+      const skinsBefore = JSON.stringify(god.skins || []);
+      ensureDefaultSkinsAndVoiceData(god);
+      const skinsAfter = JSON.stringify(god.skins || []);
+
+      // Persiste a normalização somente quando houve alteração.
+      if (skinsBefore !== skinsAfter) {
+        saveStorageData().catch(() => {});
+      }
+
       grid.innerHTML = '';
       (god.skins || []).forEach((skin, idx) => {
+        if (!skin) return;
         const wrapper = document.createElement('div');
         wrapper.className = 'god-card-container';
         wrapper.innerHTML = skinCardHtml(skin, idx, 'selectVpSkinCard');
@@ -866,17 +1061,29 @@
       });
     }
 
+
     function selectVpSkinCard(idx) {
+      const god = godsDatabase[selectedGodIdx];
+      if (!god || !god.skins || !god.skins[idx]) return;
+
       selectedSkinIdx = idx;
       renderVoicebankView();
       renderVpSkinCardsPanel();
+
+      if (currentVPMode === 'vgs') {
+        renderVgsWikiTables();
+      } else if (currentVPMode === 'god' || currentVPMode === 'announcer') {
+        renderVoiceTreePanel();
+      }
     }
 
-    function getActiveVgs() {
+        function getActiveVgs() {
       const god = godsDatabase[selectedGodIdx];
       if (!god) return [];
-      const hasSkinSelected = (selectedSkinIdx > 0 && god.skins && god.skins[selectedSkinIdx]);
-      const targetObj = hasSkinSelected ? god.skins[selectedSkinIdx] : god;
+      const hasSkinSelected = (selectedSkinIdx >= 0 && god.skins && god.skins[selectedSkinIdx]);
+      const targetObj = (god.skins && god.skins[selectedSkinIdx])
+          ? god.skins[selectedSkinIdx]
+          : god;
       if (!targetObj.vgsDatabase) {
         targetObj.vgsDatabase = [
           {
@@ -885,8 +1092,8 @@
             rows: [
               { code: 'G', result: 'General', isCategory: true, audioUrl: '', audios: [], linkBoxId: '' },
               { code: 'V', result: 'Position', isCategory: true, audioUrl: '', audios: [], linkBoxId: '' },
-              { code: 'A', result: '"Ok!"', isCategory: false, audioUrl: '', audios: [], linkBoxId: '' },
-              { code: 'B', result: '"Be right back!"', isCategory: false, audioUrl: '', audios: [], linkBoxId: '' }
+              { code: 'A', result: 'Ok!', isCategory: false, audioUrl: '', audios: [], linkBoxId: '' },
+              { code: 'B', result: 'Be right back!', isCategory: false, audioUrl: '', audios: [], linkBoxId: '' }
             ]
           }
         ];
@@ -944,7 +1151,7 @@
                 </td>
                 ${third}
                 <td class="edit-only" style="width: 35px; text-align:center;">
-                  <button type="button" style="background:none; border:none; color:var(--wiki-blue-text); cursor:pointer;" onclick="openVgsModalForEdit(${boxIdx}, ${rowIdx})">✏️</button>
+                  <button type="button" style="background:none; border:none; color:var(--wiki-blue-text); cursor:pointer;" onclick="openVgsModalForEdit(${boxIdx}, ${rowIdx})"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
                 </td>
               </tr>
             `;
@@ -956,7 +1163,7 @@
         const thThird = audiosPresent ? '<th style="width:70px; text-align:center;"></th>' : '';
         wikiBox.innerHTML = `
           <div class="vgs-outside-title">
-            <span>${escapeHtml(box.boxTitle || 'VGS')} <button type="button" style="background:none; border:none; color:var(--wiki-blue-text); font-size:0.9rem; cursor:pointer;" onclick="openVgsModalForEdit(${boxIdx}, null)" class="edit-only">✏️</button></span>
+            <span>${escapeHtml(box.boxTitle || 'VGS')} <button type="button" style="background:none; border:none; color:var(--wiki-blue-text); font-size:0.9rem; cursor:pointer;" onclick="openVgsBoxTitleModal(${boxIdx})" class="edit-only"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button></span>
           </div>
           <div class="vgs-wiki-box">
             <table class="vgs-wiki-table">
@@ -1003,7 +1210,7 @@
           if (el.textContent !== shown) el.textContent = shown;
         }
       } else {
-        row.result = val.replace(/\n+$/g, '');
+        row.result = stripWrappingQuotes(val.replace(/\n+$/g, ''));
       }
       if (focused) scheduleVgsSave();
       else {
@@ -1049,14 +1256,14 @@
       const el = document.getElementById(containerId);
       if (!el) return;
       if (!pendingAudios.length) {
-        el.innerHTML = '<div style="color:#8392A5;font-size:0.8rem;">Nenhum áudio ainda.</div>';
+        el.innerHTML = '';
         return;
       }
       el.innerHTML = pendingAudios.map((ref, i) => `
         <div class="audio-chip">
           <button type="button" class="vgs-play-double-btn" data-audio-ref="${escapeHtml(ref)}" data-audio-label="${escapeHtml('Áudio ' + (i + 1))}">▶️</button>
           <span>Áudio ${i + 1}</span>
-          <button type="button" class="smite-btn-danger" onclick="removePendingAudio(${i}, '${containerId}')" title="Remover áudio">🗑️</button>
+          <button type="button" class="smite-btn-danger" onclick="removePendingAudio(${i}, '${containerId}')" title="Remover áudio"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
         </div>
       `).join('');
     }
@@ -1098,10 +1305,14 @@
 
     function toggleVgsCategoryFields() {
       const isCat = document.getElementById('modalVgsIsCat').value === 'true';
+      const rowMode = editingVgsMode === 'new-row' || editingVgsMode === 'edit-row';
       const group = document.getElementById('groupVgsLink');
-      if (group) group.style.display = isCat ? 'flex' : 'none';
-      if (isCat) populateVgsLinkSelect(document.getElementById('modalVgsLinkBox').value);
+      if (group) group.style.display = rowMode && isCat ? 'flex' : 'none';
+      if (rowMode && isCat) {
+        populateVgsLinkSelect(document.getElementById('modalVgsLinkBox').value);
+      }
     }
+
 
     function populateVgsLinkSelect(selectedId) {
       const select = document.getElementById('modalVgsLinkBox');
@@ -1121,20 +1332,89 @@
       select.value = Array.from(select.options).some((o) => o.value === want) ? want : '';
     }
 
-    function openVgsModalForEdit(boxIdx, rowIdx) {
-      const vgsList = getActiveVgs();
-      const creatingBox = boxIdx !== null && boxIdx >= vgsList.length;
-      if (!creatingBox && (boxIdx === null || boxIdx >= vgsList.length)) boxIdx = 0;
-      editingVgsBoxIdx = creatingBox ? vgsList.length : boxIdx;
-      editingVgsRowIdx = rowIdx;
+    function setVgsModalMode(mode) {
+      editingVgsMode = mode;
+      const titleMode = mode === 'new-box' || mode === 'edit-box-title';
+      const rowMode = mode === 'new-row' || mode === 'edit-row';
 
-      const targetBox = creatingBox ? { boxTitle: 'NOVA CAIXA VGS', rows: [] } : vgsList[boxIdx];
+      const titleGroup = document.getElementById('vgsTitleFieldGroup');
+      const rowHeading = document.getElementById('vgsRowSectionTitle');
+      const rowGroups = [
+        'vgsCodeFieldGroup',
+        'vgsResultFieldGroup',
+        'vgsCategoryFieldGroup',
+        'vgsAudioFieldGroup'
+      ];
+
+      if (titleGroup) titleGroup.style.display = titleMode ? '' : 'none';
+      if (rowHeading) rowHeading.style.display = rowMode ? '' : 'none';
+      rowGroups.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = rowMode ? '' : 'none';
+      });
+
+      const linkGroup = document.getElementById('groupVgsLink');
+      if (linkGroup && titleMode) linkGroup.style.display = 'none';
+    }
+
+    function openVgsBoxTitleModal(boxIdx) {
+      const vgsList = getActiveVgs();
+      const targetBox = vgsList[boxIdx];
+      if (!targetBox) return;
+
+      editingVgsBoxIdx = boxIdx;
+      editingVgsRowIdx = null;
+      setVgsModalMode('edit-box-title');
+
       document.getElementById('modalVgsBoxTitle').value = targetBox.boxTitle || 'VGS';
-      document.getElementById('btnDeleteEntireVgsBox').style.display = creatingBox ? 'none' : 'inline-flex';
+      document.getElementById('modalVgsCode').value = '';
+      document.getElementById('modalVgsResult').value = '';
+      document.getElementById('modalVgsIsCat').value = 'false';
+      document.getElementById('btnDeleteEntireVgsBox').style.display = 'inline-flex';
+      document.getElementById('btnDeleteVgsRow').style.display = 'none';
+
       const fileInput = document.getElementById('modalVgsAudioFile');
       if (fileInput) fileInput.value = '';
 
-      if (!creatingBox && rowIdx !== null && rowIdx !== undefined && targetBox.rows && targetBox.rows[rowIdx]) {
+      pendingAudios = [];
+      populateVgsLinkSelect('');
+      toggleVgsCategoryFields();
+      renderPendingAudios('vgsAudioList');
+      document.getElementById('editVgsModal').style.display = 'flex';
+    }
+
+    function openVgsModalForEdit(boxIdx, rowIdx) {
+      const vgsList = getActiveVgs();
+      const creatingBox = boxIdx !== null && boxIdx >= vgsList.length;
+
+      if (!creatingBox && (boxIdx === null || boxIdx >= vgsList.length)) {
+        boxIdx = 0;
+      }
+
+      editingVgsBoxIdx = creatingBox ? vgsList.length : boxIdx;
+
+      const targetBox = creatingBox
+        ? { boxTitle: 'NOVA CAIXA VGS', rows: [] }
+        : vgsList[boxIdx];
+
+      const validRow = !creatingBox &&
+        rowIdx !== null &&
+        rowIdx !== undefined &&
+        targetBox.rows &&
+        targetBox.rows[rowIdx];
+
+      const mode = creatingBox ? 'new-box' : (validRow ? 'edit-row' : 'new-row');
+      editingVgsRowIdx = mode === 'edit-row' ? rowIdx : null;
+      setVgsModalMode(mode);
+
+      document.getElementById('modalVgsBoxTitle').value = targetBox.boxTitle || 'VGS';
+      document.getElementById('btnDeleteEntireVgsBox').style.display =
+        creatingBox ? 'none' : 'inline-flex';
+
+      const fileInput = document.getElementById('modalVgsAudioFile');
+      if (fileInput) fileInput.value = '';
+
+      if (mode === 'edit-row') {
         const row = targetBox.rows[rowIdx];
         document.getElementById('modalVgsCode').value = row.code || '';
         document.getElementById('modalVgsResult').value = row.result || '';
@@ -1150,10 +1430,12 @@
         pendingAudios = [];
         populateVgsLinkSelect('');
       }
+
       toggleVgsCategoryFields();
       renderPendingAudios('vgsAudioList');
       document.getElementById('editVgsModal').style.display = 'flex';
     }
+
 
     async function deleteEntireVgsBox() {
       const vgsList = getActiveVgs();
@@ -1169,40 +1451,67 @@
 
     async function saveVgsModal() {
       while (audioBusy) await new Promise((r) => setTimeout(r, 40));
+
       const vgsList = getActiveVgs();
-      const titleInput = document.getElementById('modalVgsBoxTitle').value.trim() || 'VGS';
+      const titleInput =
+        document.getElementById('modalVgsBoxTitle').value.trim() || 'VGS';
+
+      if (editingVgsMode === 'edit-box-title') {
+        const box = vgsList[editingVgsBoxIdx];
+        if (!box) return;
+        box.boxTitle = titleInput;
+        await saveStorageData();
+        renderVgsWikiTables();
+        closeModal('editVgsModal');
+        return;
+      }
+
+      if (editingVgsMode === 'new-box') {
+        vgsList.push({
+          id: 'vgsbox_' + Date.now().toString(36),
+          boxTitle: titleInput,
+          rows: []
+        });
+        await saveStorageData();
+        renderVgsWikiTables();
+        closeModal('editVgsModal');
+        return;
+      }
+
+      const targetBox = vgsList[editingVgsBoxIdx];
+      if (!targetBox) {
+        alert('A caixa VGS não foi encontrada. Nenhuma alteração foi salva.');
+        return;
+      }
+
       const code = document.getElementById('modalVgsCode').value.trim().toUpperCase();
       const result = document.getElementById('modalVgsResult').value.replace(/\n+$/g, '');
       const isCat = document.getElementById('modalVgsIsCat').value === 'true';
-      const linkBoxId = isCat ? (document.getElementById('modalVgsLinkBox').value || '') : '';
+      const linkBoxId = isCat
+        ? (document.getElementById('modalVgsLinkBox').value || '')
+        : '';
 
-      let targetBox;
-      if (editingVgsBoxIdx !== null && editingVgsBoxIdx < vgsList.length) {
-        targetBox = vgsList[editingVgsBoxIdx];
-        targetBox.boxTitle = titleInput;
-      } else {
-        targetBox = { id: 'vgsbox_' + Date.now().toString(36), boxTitle: titleInput, rows: [] };
-        vgsList.push(targetBox);
-        editingVgsBoxIdx = vgsList.length - 1;
-      }
-      if (!targetBox.id) targetBox.id = 'vgsbox_' + Date.now().toString(36);
       if (!targetBox.rows) targetBox.rows = [];
 
-      const editingExisting = editingVgsRowIdx !== null && editingVgsRowIdx !== undefined && targetBox.rows[editingVgsRowIdx];
-      if (editingExisting) {
+      if (editingVgsMode === 'edit-row') {
         const row = targetBox.rows[editingVgsRowIdx];
+        if (!row) {
+          alert('A linha VGS não foi encontrada. Nenhuma alteração foi salva.');
+          return;
+        }
+
         row.code = code;
         row.result = result;
         row.isCategory = isCat;
         row.linkBoxId = linkBoxId;
         row.audios = pendingAudios.slice();
         row.audioUrl = row.audios[0] || '';
-      } else if (code || result || pendingAudios.length) {
+      } else {
         targetBox.rows.push({
-          code: code,
-          result: result,
+          code,
+          result,
           isCategory: isCat,
-          linkBoxId: linkBoxId,
+          linkBoxId,
           audios: pendingAudios.slice(),
           audioUrl: pendingAudios[0] || ''
         });
@@ -1212,6 +1521,7 @@
       renderVgsWikiTables();
       closeModal('editVgsModal');
     }
+
 
     async function deleteVgsRow() {
       const vgsList = getActiveVgs();
@@ -1225,8 +1535,10 @@
 
     function getActiveTree() {
       const god = godsDatabase[selectedGodIdx];
-      const hasSkinSelected = (selectedSkinIdx > 0 && god.skins && god.skins[selectedSkinIdx]);
-      const targetObj = hasSkinSelected ? god.skins[selectedSkinIdx] : god;
+      const hasSkinSelected = (selectedSkinIdx >= 0 && god.skins && god.skins[selectedSkinIdx]);
+      const targetObj = (god.skins && god.skins[selectedSkinIdx])
+          ? god.skins[selectedSkinIdx]
+          : god;
       if (currentVPMode === 'announcer') {
         if (!targetObj.announcerTree) targetObj.announcerTree = [];
         return targetObj.announcerTree;
@@ -1320,7 +1632,7 @@
       const tree = getActiveTree();
       const type = document.getElementById('modalTreeType').value;
       const title = document.getElementById('modalTreeTitle').value.trim();
-      const text = document.getElementById('modalTreeText').value.trim();
+      const text = stripWrappingQuotes(document.getElementById('modalTreeText').value);
       const parentId = document.getElementById('modalTreeParentSelect').value;
 
       if (type === 'line' && !text) {
@@ -1340,19 +1652,33 @@
       };
 
       if (editingTreeTarget) {
-        removeNodeFromTree(tree, editingTreeTarget.id);
+        const originalParent = findParentNodeInTree(tree, editingTreeTarget.id);
+        const originalList = originalParent ? originalParent.children : tree;
+        const originalIndex = originalList
+          ? originalList.findIndex((item) => item.id === editingTreeTarget.id)
+          : -1;
+        const originalParentId = originalParent ? originalParent.id : 'root';
+
         editingTreeTarget.type = type;
         editingTreeTarget.title = title;
         editingTreeTarget.text = text;
         applyAudios(editingTreeTarget);
-        if (parentId !== 'root') {
-          const pNode = findNodeInTree(tree, parentId);
-          if (pNode) {
-            if (!pNode.children) pNode.children = [];
-            pNode.children.push(editingTreeTarget);
-          } else tree.push(editingTreeTarget);
+
+        if (parentId === originalParentId && originalIndex >= 0) {
+          // Mesmo pai: atualizar sem remover ou mover o item.
+          originalList[originalIndex] = editingTreeTarget;
         } else {
-          tree.push(editingTreeTarget);
+          // Pai alterado: remover da posição anterior e inserir no novo destino.
+          removeNodeFromTree(tree, editingTreeTarget.id);
+          if (parentId !== 'root') {
+            const pNode = findNodeInTree(tree, parentId);
+            if (pNode) {
+              if (!pNode.children) pNode.children = [];
+              pNode.children.push(editingTreeTarget);
+            } else tree.push(editingTreeTarget);
+          } else {
+            tree.push(editingTreeTarget);
+          }
         }
       } else {
         const newNode = {
@@ -1447,46 +1773,77 @@
       document.getElementById('godModal').style.display = 'flex';
     }
 
+
     async function saveGodModal() {
+  let createdGodIndex = null;
       const name = document.getElementById('modalGodName').value || 'NOVO DEUS';
       const title = document.getElementById('modalGodTitle').value || 'TÍTULO';
       const fileInput = document.getElementById('modalGodImgFile');
       const file = fileInput && fileInput.files[0];
+
       try {
         if (editingGodIndex !== null && editingGodIndex !== undefined) {
           const god = godsDatabase[editingGodIndex];
           god.name = name;
           god.title = title;
           if (file) god.img = await storeBlob(file);
+          if (!Array.isArray(god.skins)) god.skins = [];
+          ensureDefaultSkinsAndVoiceData(god);
         } else {
+          const godImage = file
+            ? await storeBlob(file)
+            : defaultGodsDatabase[0].img;
+          const godId = 'god_' + Date.now();
+
+          const defaultSkin = {
+            id: 'skin_default_' + godId,
+            name: 'Padrão',
+            tier: 'PADRÃO',
+            img: godImage,
+            dubber: '',
+            releaseDate: '',
+            voiceTree: [],
+            announcerTree: [],
+            vgsDatabase: []
+          };
+
           const newGod = {
-            id: 'god_' + Date.now(),
+            id: godId,
             name: name,
             title: title,
             pantheon: 'Japonês',
             type: 'Físico',
             class: 'Caçador',
+            classImg: '/smite-icons/NewUI_Class_Hunter.webp',
             miniQuote: 'Frase curta...',
             difficulty: 'Média',
             lore: 'História do novo deus...',
             dubber: '',
             releaseDate: '',
-            img: file ? await storeBlob(file) : defaultGodsDatabase[0].img,
-            skins: [],
+            img: godImage,
+            skins: [defaultSkin],
             voiceTree: [],
             announcerTree: []
           };
           godsDatabase.push(newGod);
+        createdGodIndex = godsDatabase.length - 1;
+        selectedGodIdx = createdGodIndex;
+        selectedSkinIdx = 0;
         }
+
         await saveStorageData();
         renderRoster();
         closeModal('godModal');
+      if (createdGodIndex !== null) {
+        selectGod(createdGodIndex);
+      }
       } catch (err) {
+        console.error('Erro ao salvar deus:', err);
         alert('Não foi possível salvar o deus com essa imagem.');
       }
     }
 
-    async function deleteCurrentGod() {
+        async function deleteCurrentGod() {
       if (editingGodIndex !== null && editingGodIndex !== undefined) {
         godsDatabase.splice(editingGodIndex, 1);
         await saveStorageData();
@@ -1496,167 +1853,83 @@
     }
 
 
-    function normalizeAboutIconName(value) {
-      return String(value || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLocaleLowerCase('pt-BR');
-    }
-
-    function syncAboutIconBank(inputId, selectId, mapping) {
-      const input = document.getElementById(inputId);
-      const select = document.getElementById(selectId);
-      if (!input || !select) return;
-
-      const normalized = normalizeAboutIconName(input.value);
-      const path = mapping[normalized];
-
-      // Só altera a seleção quando existe correspondência válida.
-      // Nomes desconhecidos não apagam a escolha já existente.
-      if (path && [...select.options].some(o => o.value === path)) {
-        select.value = path;
-      }
-    }
-
-    function setupAboutIconAutoMapping() {
-      const mappings = [
-        ['aboutPantheonName', 'aboutPantheonBank', {
-          'arthuriano': '/smite-icons/NewUI_Pantheon_Arthurian.png',
-          'babilonico': '/smite-icons/NewUI_Pantheon_Babylonian.png',
-          'celta': '/smite-icons/NewUI_Pantheon_Celtic.png',
-          'chines': '/smite-icons/NewUI_Pantheon_Chinese.png',
-          'egipcio': '/smite-icons/NewUI_Pantheon_Egyptian.png',
-          'grandes antigos': '/smite-icons/NewUI_Pantheon_Great_Old_Ones.png',
-          'os grandes antigos': '/smite-icons/NewUI_Pantheon_Great_Old_Ones.png',
-          'grego': '/smite-icons/NewUI_Pantheon_Greek.png',
-          'hindu': '/smite-icons/NewUI_Pantheon_Hindu.png',
-          'japones': '/smite-icons/NewUI_Pantheon_Japanese.webp',
-          'maia': '/smite-icons/NewUI_Pantheon_Maya.png',
-          'nordico': '/smite-icons/NewUI_Pantheon_Norse.png',
-          'polinesio': '/smite-icons/NewUI_Pantheon_Polynesian.png',
-          'romano': '/smite-icons/NewUI_Pantheon_Roman.png',
-          'eslavo': '/smite-icons/NewUI_Pantheon_Slavic.png',
-          'vodu': '/smite-icons/NewUI_Pantheon_Voodoo.png',
-          'ioruba': '/smite-icons/NewUI_Pantheon_Yoruba.png'
-        }],
-        ['aboutTypeName', 'aboutTypeBank', {
-          'magico': '/smite-icons/NewUI_Type_Magical.png',
-          'fisico': '/smite-icons/NewUI_Type_Physical.png'
-        }],
-        ['aboutClassName', 'aboutClassBank', {
-          'guardiao': '/smite-icons/NewUI_Class_Guardian.png',
-          'guerreiro': '/smite-icons/NewUI_Class_Warrior.png',
-          'cacador': '/smite-icons/NewUI_Class_Hunter.webp',
-          'mago': '/smite-icons/NewUI_Class_Mage.png',
-          'assassino': '/smite-icons/NewUI_Class_Assassin.webp',
-          'desconhecida': '/smite-icons/NewUI_Class_Unknown.png',
-          'desconhecido': '/smite-icons/NewUI_Class_Unknown.png'
-        }]
-      ];
-
-      for (const [inputId, selectId, mapping] of mappings) {
-        const input = document.getElementById(inputId);
-        if (!input || input.dataset.iconMappingReady === '1') continue;
-        input.addEventListener('input', () => {
-          syncAboutIconBank(inputId, selectId, mapping);
-        });
-        input.dataset.iconMappingReady = '1';
-      }
-    }
 
     function openAboutModal() {
-      setupAboutIconAutoMapping();
       const god = godsDatabase[selectedGodIdx];
-      document.getElementById('aboutPantheonName').value = god.pantheon || '';
-      document.getElementById('aboutTypeName').value = god.type || '';
-      document.getElementById('aboutClassName').value = god.class || '';
-      document.getElementById('aboutQuote').value = god.miniQuote || '';
-      document.getElementById('aboutDifficulty').value = god.difficulty || '';
-      ['aboutPantheonImgFile', 'aboutTypeImgFile', 'aboutClassImgFile'].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
+      if (!god) return;
+
       [
-        ['aboutPantheonBank', god.pantheonImg, 'aboutPantheonName', {
-          'arthuriano': '/smite-icons/NewUI_Pantheon_Arthurian.png',
-          'babilonico': '/smite-icons/NewUI_Pantheon_Babylonian.png',
-          'celta': '/smite-icons/NewUI_Pantheon_Celtic.png',
-          'chines': '/smite-icons/NewUI_Pantheon_Chinese.png',
-          'egipcio': '/smite-icons/NewUI_Pantheon_Egyptian.png',
-          'grandes antigos': '/smite-icons/NewUI_Pantheon_Great_Old_Ones.png',
-          'os grandes antigos': '/smite-icons/NewUI_Pantheon_Great_Old_Ones.png',
-          'grego': '/smite-icons/NewUI_Pantheon_Greek.png',
-          'hindu': '/smite-icons/NewUI_Pantheon_Hindu.png',
-          'japones': '/smite-icons/NewUI_Pantheon_Japanese.webp',
-          'maia': '/smite-icons/NewUI_Pantheon_Maya.png',
-          'nordico': '/smite-icons/NewUI_Pantheon_Norse.png',
-          'polinesio': '/smite-icons/NewUI_Pantheon_Polynesian.png',
-          'romano': '/smite-icons/NewUI_Pantheon_Roman.png',
-          'eslavo': '/smite-icons/NewUI_Pantheon_Slavic.png',
-          'vodu': '/smite-icons/NewUI_Pantheon_Voodoo.png',
-          'ioruba': '/smite-icons/NewUI_Pantheon_Yoruba.png'
-        }],
-        ['aboutTypeBank', god.typeImg, 'aboutTypeName', {
-          'magico': '/smite-icons/NewUI_Type_Magical.png',
-          'fisico': '/smite-icons/NewUI_Type_Physical.png'
-        }],
-        ['aboutClassBank', god.classImg, 'aboutClassName', {
-          'guardiao': '/smite-icons/NewUI_Class_Guardian.png',
-          'guerreiro': '/smite-icons/NewUI_Class_Warrior.png',
-          'cacador': '/smite-icons/NewUI_Class_Hunter.webp',
-          'mago': '/smite-icons/NewUI_Class_Mage.png',
-          'assassino': '/smite-icons/NewUI_Class_Assassin.webp',
-          'desconhecida': '/smite-icons/NewUI_Class_Unknown.png',
-          'desconhecido': '/smite-icons/NewUI_Class_Unknown.png'
-        }]
-      ].forEach(([id, current, inputId, mapping]) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const knownCurrent = [...el.options].some(o => o.value === current);
-        if (knownCurrent) {
-          el.value = current;
-        } else {
-          const input = document.getElementById(inputId);
-          const key = normalizeAboutIconName(input ? input.value : '');
-          const mapped = mapping[key];
-          // Não substitui imagem personalizada salva por uma imagem do banco.
-          el.value = '';
-          if (!current && mapped && [...el.options].some(o => o.value === mapped)) {
-            el.value = mapped;
-          }
-        }
+        ['aboutPantheonBank', god.pantheonImg],
+        ['aboutTypeBank', god.typeImg],
+        ['aboutClassBank', god.classImg]
+      ].forEach(([id, current]) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.value = [...select.options].some(option => option.value === current)
+          ? current
+          : '';
       });
+
+      document.getElementById('aboutQuote').value = god.miniQuote || '';
+
+      const difficulty = document.getElementById('aboutDifficulty');
+      if (difficulty) {
+        const current = god.difficulty || 'Não definida';
+        if (![...difficulty.options].some(option => option.value === current)) {
+          const legacy = document.createElement('option');
+          legacy.value = current;
+          legacy.textContent = current;
+          difficulty.appendChild(legacy);
+        }
+        difficulty.value = current;
+      }
+
       document.getElementById('aboutModal').style.display = 'flex';
     }
 
+
+
     async function saveAboutModal() {
       const god = godsDatabase[selectedGodIdx];
-      god.pantheon = document.getElementById('aboutPantheonName').value;
-      god.type = document.getElementById('aboutTypeName').value;
-      god.class = document.getElementById('aboutClassName').value;
+      if (!god) return;
+
       god.miniQuote = document.getElementById('aboutQuote').value;
-      god.difficulty = document.getElementById('aboutDifficulty').value;
+      god.difficulty =
+        document.getElementById('aboutDifficulty')?.value || 'Não definida';
+
+      const iconFields = [
+        ['aboutPantheonBank', 'pantheonImg'],
+        ['aboutTypeBank', 'typeImg'],
+        ['aboutClassBank', 'classImg']
+      ];
+
+      iconFields.forEach(([id, field]) => {
+        const selected = document.getElementById(id)?.value || '';
+        if (selected) god[field] = selected;
+      });
+
+      const classNamesByImage = {
+        '/smite-icons/NewUI_Class_Guardian.png': 'Guardião',
+        '/smite-icons/NewUI_Class_Mage.png': 'Mago',
+        '/smite-icons/NewUI_Class_Warrior.png': 'Guerreiro',
+        '/smite-icons/NewUI_Class_Assassin.webp': 'Assassino',
+        '/smite-icons/NewUI_Class_Unknown.png': 'Desconhecida',
+        '/smite-icons/NewUI_Class_Hunter.webp': 'Caçador'
+      };
+      if (classNamesByImage[god.classImg]) {
+        god.class = classNamesByImage[god.classImg];
+      }
+
       try {
-        const pFile = document.getElementById('aboutPantheonImgFile').files[0];
-        const tFile = document.getElementById('aboutTypeImgFile').files[0];
-        const cFile = document.getElementById('aboutClassImgFile').files[0];
-        const pBank = document.getElementById('aboutPantheonBank').value;
-        const tBank = document.getElementById('aboutTypeBank').value;
-        const cBank = document.getElementById('aboutClassBank').value;
-        if (pFile) god.pantheonImg = await storeBlob(pFile);
-        else if (pBank) god.pantheonImg = pBank;
-        if (tFile) god.typeImg = await storeBlob(tFile);
-        else if (tBank) god.typeImg = tBank;
-        if (cFile) god.classImg = await storeBlob(cFile);
-        else if (cBank) god.classImg = cBank;
         await saveStorageData();
         renderGodView();
         closeModal('aboutModal');
       } catch (err) {
-        alert('Não foi possível salvar os ícones.');
+        console.error('Erro ao salvar informações do deus:', err);
+        alert('Não foi possível salvar as informações.');
       }
     }
+
 
     function openLoreModal() {
       document.getElementById('loreTextarea').value = godsDatabase[selectedGodIdx].lore || '';
@@ -1713,7 +1986,10 @@
             tier: tier,
             img: imgRef || god.img,
             dubber: god.dubber || '',
-            releaseDate: god.releaseDate || ''
+            releaseDate: god.releaseDate || '',
+            voiceTree: [],
+            announcerTree: [],
+            vgsDatabase: []
           });
         }
         await saveStorageData();
@@ -1818,31 +2094,269 @@
       }, 2200);
     }
 
-    function startPlayingChat(speech) {
-      stopChatClock();
-      chatToken++;
+    const playbackNotices = [];
+    let playbackNoticeId = 0;
+
+    function renderPlaybackNotices() {
       const el = chatEl();
-      if (!el) return;
-      const render = () => {
-        el.classList.remove('is-fading');
-        el.classList.add('is-playing');
-        el.textContent = '[' + clockStamp() + ']: Reproduzindo: ' + speech;
+      const stack = document.getElementById('playbackNoticeStack');
+      if (!el || !stack) return;
+
+      if (typeof playbackNoticeResizeObserver !== 'undefined' && playbackNoticeResizeObserver) {
+        try { playbackNoticeResizeObserver.disconnect(); } catch (_) {}
+      }
+
+      const current = playbackNotices.length
+        ? playbackNotices[playbackNotices.length - 1]
+        : null;
+      const previous = current
+        ? playbackNotices.slice(0, -1).slice(-2)
+        : [];
+
+      stack.replaceChildren();
+      stack.classList.toggle('has-notices', previous.length > 0);
+
+      previous.forEach((notice, index) => {
+        const row = document.createElement('div');
+        row.className = 'playback-notice-row';
+        row.dataset.noticeId = String(notice.id);
+        if (index === 0) row.classList.add('is-oldest');
+        row.textContent = notice.text;
+        stack.appendChild(row);
+      });
+
+      el.classList.toggle('is-playing', !!current);
+      el.classList.toggle('has-playback-notices', previous.length > 0);
+      el.replaceChildren();
+
+      if (!current) {
+        el.textContent = CHAT_IDLE;
+        stack.style.display = 'none';
+        return;
+      }
+
+      const text = document.createElement('span');
+      text.className = 'playback-current-text';
+      text.dataset.noticeId = String(current.id);
+
+      const inner = document.createElement('span');
+      inner.className = 'playback-current-text-inner';
+      inner.textContent = current.text;
+      text.appendChild(inner);
+      el.appendChild(text);
+
+      const positionNoticeStack = () => {
+        const parent = stack.parentElement;
+        if (!parent || !previous.length) {
+          stack.style.display = 'none';
+          return;
+        }
+
+        stack.style.display = 'flex';
+        stack.style.top = '0px';
+        stack.style.bottom = 'auto';
+        stack.style.left = '0px';
+        stack.style.right = 'auto';
+        stack.style.width = 'auto';
+
+        const anchor = el.querySelector('.playback-current-text');
+        if (!anchor) {
+          stack.style.display = 'none';
+          return;
+        }
+
+        const parentRect = parent.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+
+        const left = anchorRect.left - parentRect.left
+          + parent.scrollLeft - (parent.clientLeft || 0);
+        const width = Math.max(0, anchorRect.width);
+
+        stack.style.setProperty('left', `${left}px`, 'important');
+        stack.style.setProperty('right', 'auto', 'important');
+        stack.style.width = `${width}px`;
+
+        const stackHeight = stack.getBoundingClientRect().height;
+        const top = anchorRect.top - parentRect.top
+          + parent.scrollTop - (parent.clientTop || 0) - stackHeight;
+
+        stack.style.top = `${top}px`;
       };
-      render();
-      chatClockTimer = setInterval(render, 1000);
+
+      const updateOverflow = () => {
+        const availableWidth = text.clientWidth;
+        const contentWidth = Math.max(
+          inner.scrollWidth,
+          inner.getBoundingClientRect().width
+        );
+        const distance = Math.max(0, contentWidth - availableWidth);
+        const overflowing = availableWidth > 0 && distance > 2;
+
+        text.classList.toggle('is-overflowing', overflowing);
+
+        if (overflowing) {
+          inner.style.setProperty('--smite-marquee-distance', `${distance}px`);
+          inner.style.setProperty(
+            '--marquee-duration',
+            `${Math.max(8, Math.min(24, distance / 12))}s`
+          );
+        } else {
+          inner.style.removeProperty('--smite-marquee-distance');
+          inner.style.removeProperty('--marquee-duration');
+          inner.style.removeProperty('transform');
+        }
+
+        positionNoticeStack();
+      };
+
+      updateOverflow();
+
+      if (typeof ResizeObserver !== 'undefined') {
+        playbackNoticeResizeObserver = new ResizeObserver(updateOverflow);
+        playbackNoticeResizeObserver.observe(el);
+        playbackNoticeResizeObserver.observe(text);
+        playbackNoticeResizeObserver.observe(inner);
+        playbackNoticeResizeObserver.observe(stack);
+      }
+
+      if (!window.__smiteNoticeStackResizeBound) {
+        window.__smiteNoticeStackResizeBound = true;
+        window.addEventListener('resize', () => {
+          const audio = document.getElementById('statusAudio');
+          const history = document.getElementById('playbackNoticeStack');
+          if (!audio || !history || !history.classList.contains('has-notices')) return;
+          const parent = history.parentElement;
+          if (!parent) return;
+
+          const pr = parent.getBoundingClientRect();
+          const ar = audio.getBoundingClientRect();
+          const st = getComputedStyle(audio);
+          const bl = parseFloat(st.borderLeftWidth) || 0;
+          const br = parseFloat(st.borderRightWidth) || 0;
+          const pl = parseFloat(st.paddingLeft) || 0;
+          const padR = parseFloat(st.paddingRight) || 0;
+
+          history.style.left = `${ar.left - pr.left + parent.scrollLeft + bl + pl}px`;
+          history.style.width = `${Math.max(0, ar.width - bl - br - pl - padR)}px`;
+          history.style.right = 'auto';
+          history.style.bottom = 'auto';
+          history.style.top = `${ar.top - pr.top + parent.scrollTop - history.getBoundingClientRect().height}px`;
+        });
+      }
     }
 
-    function fadeOutPlayingChat() {
-      stopChatClock();
+    function startPlayingChat(speech, audio) {
       const el = chatEl();
-      if (!el) return;
-      const token = ++chatToken;
-      el.classList.add('is-fading');
-      setTimeout(() => {
-        if (token !== chatToken) return;
-        el.classList.remove('is-playing', 'is-fading');
-        el.textContent = CHAT_IDLE;
-      }, 600);
+      if (!el) return null;
+
+      const notice = {
+        id: ++playbackNoticeId,
+        text: '[' + clockStamp() + ']: Reproduzindo: ' + String(speech || ''),
+        timer: null
+      };
+
+      playbackNotices.push(notice);
+      if (audio) audio.__smiteNoticeId = notice.id;
+
+      while (playbackNotices.length > 3) {
+        const oldest = playbackNotices.shift();
+        if (oldest && oldest.timer) clearTimeout(oldest.timer);
+      }
+
+      renderPlaybackNotices();
+      return notice.id;
+    }
+
+    function fadeOutPlayingChat(audio) {
+      const noticeId = audio && audio.__smiteNoticeId;
+      if (!noticeId) return;
+
+      const notice = playbackNotices.find((item) => item.id === noticeId);
+      if (!notice || notice.timer) return;
+
+      notice.timer = setTimeout(() => {
+        const id = String(noticeId);
+        const stack = document.getElementById('playbackNoticeStack');
+        const el = chatEl();
+
+        /* Procura o elemento realmente visível: histórico ou texto atual. */
+        const row = stack
+          ? Array.from(stack.querySelectorAll('.playback-notice-row'))
+              .find((item) => item.dataset.noticeId === id)
+          : null;
+
+        const currentText = el
+          ? el.querySelector('.playback-current-text')
+          : null;
+
+        const target = row || (
+          currentText && currentText.dataset.noticeId === id
+            ? currentText
+            : null
+        );
+
+        const removeNotice = () => {
+          const index = playbackNotices.findIndex(
+            (item) => item.id === noticeId
+          );
+
+          if (index !== -1) {
+            playbackNotices.splice(index, 1);
+            renderPlaybackNotices();
+          }
+
+          if (audio && audio.__smiteNoticeId === noticeId) {
+            audio.__smiteNoticeId = null;
+          }
+        };
+
+        if (!target || !target.isConnected) {
+          removeNotice();
+          return;
+        }
+
+        target.classList.remove('is-notice-entering');
+
+        let finished = false;
+        let fallback = null;
+        let animation = null;
+
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          if (fallback !== null) clearTimeout(fallback);
+          if (animation) {
+            animation.onfinish = null;
+            animation.oncancel = null;
+          }
+          removeNotice();
+        };
+
+        try {
+          if (typeof target.animate === 'function') {
+            animation = target.animate(
+              [
+                { opacity: 1, transform: 'translateY(0px)' },
+                { opacity: 0, transform: 'translateY(-5px)' }
+              ],
+              {
+                duration: 520,
+                easing: 'ease-in',
+                fill: 'forwards'
+              }
+            );
+
+            animation.onfinish = finish;
+            animation.oncancel = finish;
+          } else {
+            target.classList.add('is-notice-leaving');
+          }
+        } catch (error) {
+          target.classList.add('is-notice-leaving');
+        }
+
+        fallback = setTimeout(finish, 750);
+      }, 4500);
     }
 
     function resetPlayButton(btn) {
@@ -1887,13 +2401,32 @@
       audio.__smiteFadeFrame = requestAnimationFrame(step);
     }
 
-    function togglePlayAudio(ref, titleText, btnElement) {
-      const url = mediaSync(ref);
-      if (!url || !btnElement) return;
+    async function togglePlayAudio(ref, titleText, btnElement) {
+      if (!ref || !btnElement) return;
 
       const requestId = ++audioSwitchToken;
       const current = activeAudioInstance;
       const currentButton = activePlayButtonElement;
+
+      let url = mediaSync(ref);
+
+      // Referências do IndexedDB podem ainda não ter uma URL em cache.
+      if (!url) {
+        try {
+          url = await ensureMedia(ref);
+        } catch (error) {
+          console.error('[SMITE VB] Falha ao carregar áudio:', ref, error);
+          return;
+        }
+      }
+
+      // Uma solicitação mais recente tem prioridade.
+      if (requestId !== audioSwitchToken) return;
+
+      if (!url) {
+        console.error('[SMITE VB] Áudio sem URL disponível:', ref);
+        return;
+      }
 
       const startRequestedAudio = () => {
         if (requestId !== audioSwitchToken) return;
@@ -1908,7 +2441,14 @@
 
         btnElement.classList.add('playing');
         btnElement.textContent = '⏸️';
-        startPlayingChat(titleText);
+
+        audio.onerror = () => {
+          console.error(
+            '[SMITE VB] Erro ao decodificar/carregar áudio:',
+            ref,
+            audio.error
+          );
+        };
 
         audio.onended = () => {
           resetPlayButton(btnElement);
@@ -1916,28 +2456,35 @@
             activeAudioInstance = null;
             activePlayButtonElement = null;
           }
-          fadeOutPlayingChat();
+          fadeOutPlayingChat(audio);
         };
 
         audio.play().then(() => {
-          if (activeAudioInstance === audio && requestId === audioSwitchToken) {
+          if (
+            activeAudioInstance === audio &&
+            requestId === audioSwitchToken
+          ) {
+            audio.__smiteNoticeId = startPlayingChat(titleText, audio);
             fadeAudioGain(audio, 1, 32);
           }
-        }).catch(() => {
+        }).catch((error) => {
+          console.error('[SMITE VB] Reprodução recusada:', ref, error);
+
           if (activeAudioInstance === audio) {
             activeAudioInstance = null;
             activePlayButtonElement = null;
           }
+
           audio.onended = null;
           audio.pause();
           audio.volume = 0;
           audio.__smiteGain = 0;
           resetPlayButton(btnElement);
-          fadeOutPlayingChat();
+          fadeOutPlayingChat(audio);
         });
       };
 
-      // Mesmo botão: pausar ou retomar a faixa atual.
+      // Mesmo botão: pausar ou retomar.
       if (current && currentButton === btnElement) {
         if (!current.paused) {
           fadeAudioGain(current, 0, 32, () => {
@@ -1946,37 +2493,58 @@
             current.volume = audioVolume;
             current.__smiteGain = 1;
             resetPlayButton(btnElement);
-            fadeOutPlayingChat();
+            fadeOutPlayingChat(current);
           });
           return;
         }
 
         current.__smiteGain = 0;
         current.volume = 0;
+
         current.play().then(() => {
-          if (activeAudioInstance !== current || requestId !== audioSwitchToken) return;
+          if (
+            activeAudioInstance !== current ||
+            requestId !== audioSwitchToken
+          ) return;
+
           btnElement.classList.add('playing');
           btnElement.textContent = '⏸️';
           fadeAudioGain(current, 1, 32);
-          startPlayingChat(titleText);
-        }).catch(() => {
+          current.__smiteNoticeId = startPlayingChat(titleText, current);
+        }).catch((error) => {
+          console.error('[SMITE VB] Falha ao retomar áudio:', ref, error);
           if (activeAudioInstance === current) {
             resetPlayButton(btnElement);
-            fadeOutPlayingChat();
+            fadeOutPlayingChat(current);
           }
         });
         return;
       }
 
-      // Faixa anterior: terminar o fade-out e pará-la antes da próxima.
+      // Troca de faixa: encerra a anterior antes de iniciar a nova.
       if (current) {
         current.onended = null;
-        fadeAudioGain(current, 0, 32, () => {
+        let switchFinished = false;
+
+        const finishSwitch = () => {
+          if (switchFinished || requestId !== audioSwitchToken) return;
+          switchFinished = true;
+
+          if (current.__smiteFadeFrame) {
+            cancelAnimationFrame(current.__smiteFadeFrame);
+            current.__smiteFadeFrame = 0;
+          }
+
+          current.__smiteFadeToken = (current.__smiteFadeToken || 0) + 1;
           current.pause();
-          try { current.currentTime = 0; } catch (e) {}
+          try {
+            current.currentTime = 0;
+          } catch (error) {}
+
           current.volume = 0;
           current.__smiteGain = 0;
           resetPlayButton(currentButton);
+          fadeOutPlayingChat(current);
 
           if (activeAudioInstance === current) {
             activeAudioInstance = null;
@@ -1984,7 +2552,10 @@
           }
 
           startRequestedAudio();
-        });
+        };
+
+        fadeAudioGain(current, 0, 32, finishSwitch);
+        setTimeout(finishSwitch, 100);
         return;
       }
 
@@ -2041,8 +2612,54 @@
       const btn = document.getElementById('globalPageEditBtn');
       if (!btn || btn.dataset.dragReady === '1') return;
       btn.dataset.dragReady = '1';
+
       let drag = null;
       const DRAG_THRESHOLD = 12;
+      const EDGE_GAP = 8;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(Math.max(min, max), value));
+      }
+
+      function placeButton(x, y, snapToEdge, persist = false) {
+        const rect = btn.getBoundingClientRect();
+        const width = rect.width || 46;
+        const height = rect.height || 46;
+        const maxX = window.innerWidth - width - EDGE_GAP;
+        const maxY = window.innerHeight - height - EDGE_GAP;
+
+        x = clamp(x, EDGE_GAP, maxX);
+        y = clamp(y, EDGE_GAP, maxY);
+
+        if (snapToEdge) {
+          const centerX = x + width / 2;
+          x = centerX < window.innerWidth / 2
+            ? EDGE_GAP
+            : Math.max(EDGE_GAP, window.innerWidth - width - EDGE_GAP);
+        }
+
+        btn.style.left = x + 'px';
+        btn.style.top = y + 'px';
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+
+        if (persist) {
+          try {
+            localStorage.setItem('smite_pencil_pos', JSON.stringify({
+              x: x,
+              y: y
+            }));
+          } catch (err) {}
+        }
+      }
+
+      // Restaura a posição salva e encaixa o botão na lateral mais próxima.
+      try {
+        const saved = JSON.parse(localStorage.getItem('smite_pencil_pos') || 'null');
+        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+          placeButton(saved.x, saved.y, true, false);
+        }
+      } catch (err) {}
 
       btn.addEventListener('pointerdown', (e) => {
         if (e.button !== undefined && e.button !== 0) return;
@@ -2050,52 +2667,61 @@
         drag = {
           dx: e.clientX - rect.left,
           dy: e.clientY - rect.top,
-          moved: false,
           sx: e.clientX,
           sy: e.clientY,
+          moved: false,
           pid: e.pointerId
         };
       });
+
       btn.addEventListener('pointermove', (e) => {
         if (!drag || e.pointerId !== drag.pid) return;
+
         if (!drag.moved) {
-          if (Math.abs(e.clientX - drag.sx) < DRAG_THRESHOLD && Math.abs(e.clientY - drag.sy) < DRAG_THRESHOLD) return;
+          if (
+            Math.abs(e.clientX - drag.sx) < DRAG_THRESHOLD &&
+            Math.abs(e.clientY - drag.sy) < DRAG_THRESHOLD
+          ) return;
+
           drag.moved = true;
           btn.classList.add('is-dragging');
           try { btn.setPointerCapture(e.pointerId); } catch (err) {}
         }
-        const x = Math.max(4, Math.min(window.innerWidth - 50, e.clientX - drag.dx));
-        const y = Math.max(4, Math.min(window.innerHeight - 50, e.clientY - drag.dy));
-        btn.style.left = x + 'px';
-        btn.style.top = y + 'px';
-        btn.style.right = 'auto';
-        btn.style.bottom = 'auto';
+
+        placeButton(e.clientX - drag.dx, e.clientY - drag.dy, false);
       });
-      const endDrag = (e) => {
+
+      function endDrag(e) {
         if (!drag || (e && e.pointerId !== undefined && e.pointerId !== drag.pid)) return;
+
         const moved = drag.moved;
         drag = null;
         btn.classList.remove('is-dragging');
+
         if (!moved) return;
+
         btn.dataset.suppressClick = '1';
-        const x = parseInt(btn.style.left, 10);
-        const y = parseInt(btn.style.top, 10);
-        try { localStorage.setItem('smite_pencil_pos', JSON.stringify({ x: x, y: y })); } catch (err) {}
-      };
+        setTimeout(() => {
+          btn.dataset.suppressClick = '';
+        }, 350);
+        const rect = btn.getBoundingClientRect();
+        placeButton(rect.left, rect.top, true, true);
+      }
+
       btn.addEventListener('pointerup', endDrag);
-      btn.addEventListener('pointercancel', (e) => {
-        if (!drag || e.pointerId !== drag.pid) return;
-        const moved = drag.moved;
-        drag = null;
-        btn.classList.remove('is-dragging');
-        if (moved) btn.dataset.suppressClick = '1';
-      });
+      btn.addEventListener('pointercancel', endDrag);
+
       btn.addEventListener('click', (e) => {
         if (btn.dataset.suppressClick !== '1') return;
         e.preventDefault();
         e.stopImmediatePropagation();
         btn.dataset.suppressClick = '';
       }, true);
+
+      window.addEventListener('resize', () => {
+        const rect = btn.getBoundingClientRect();
+        placeButton(rect.left, rect.top, true, true);
+      });
     }
 
     async function bootSmiteWiki() {

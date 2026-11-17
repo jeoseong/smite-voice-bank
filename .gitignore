@@ -1,3 +1,6 @@
-
-# Artefatos gerados pela Vercel
 .vercel/output/
+.vercel
+.env
+.env.*
+!.env.example
+.env*

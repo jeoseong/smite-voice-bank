@@ -15,7 +15,7 @@
 
     :root {
       --wiki-gold-title: #f3d078;
-      --wiki-gold-border: #8c7343;
+      --wiki-gold-border: #846431;
       --wiki-gold-subtle: #4a3c22;
       --wiki-blue-text: #4da6ff;
       --wiki-bg-dark: #080c14;
@@ -777,7 +777,95 @@
       font-size: 0.8rem;
       color: var(--wiki-gold-title);
     }
-  </style>
+
+  /* SMITE VB: refinamento visual VGS/outcome */
+  .vgs-outside-title {
+    color: #D6B68F !important;
+  }
+
+  .vgs-wiki-table th {
+    color: #D6B68F !important;
+  }
+
+  .vgs-code-cell.is-cat-code,
+  .vgs-outcome-cell.is-category-result {
+    color: #72C5E7 !important;
+  }
+
+  .vgs-wiki-box {
+    border: 0.7px solid #846431 !important;
+}
+
+/* SMITE VB: ajuste visual VGS, Outcome e botões de áudio */
+.vgs-outside-title,
+.vgs-wiki-table th {
+  color: #D6B68F !important;
+}
+
+.vgs-code-cell.is-cat-code,
+.vgs-outcome-cell.is-category-result,
+.vgs-outcome-cell.is-category-result .vgs-editable {
+  color: #72C5E7 !important;
+}
+
+/* Contorno externo fino e sombra interna mais evidente */
+.vgs-wiki-box {
+  border: 0.7px solid #846431 !important;
+}
+
+.vgs-audio-btns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vgs-play-double-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #72C5E7 !important;
+  font-size: 0;
+  line-height: 1;
+  padding: 3px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.vgs-play-double-btn .smite-audio-speaker {
+  display: block;
+  width: 25px;
+  height: 25px;
+}
+
+.vgs-play-double-btn:hover {
+  color: #A4E4FA !important;
+  filter: drop-shadow(0 0 4px rgba(114, 197, 231, 0.42));
+}
+
+.vgs-play-double-btn:focus-visible {
+  outline: 1px solid #72C5E7;
+  outline-offset: 2px;
+}
+
+
+/* SMITE VB: reduzir somente o espaçamento interno vertical do corpo */
+.vgs-wiki-box .vgs-wiki-table tbody td {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+
+
+/* SMITE VB: compactação vertical do corpo da tabela */
+.vgs-wiki-box .vgs-wiki-table tbody td {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 0.9 !important;
+}
+
+</style>
 </head>
 <body class="on-screen-main">
 
@@ -2361,3 +2449,20 @@
   </script>
 </body>
 </html>
+
+/* SMITE VB: compactação somente da coluna de marcadores */
+.vgs-wiki-box .vgs-wiki-table td:first-child {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+
+/* SMITE VB: largura reduzida da coluna de marcadores */
+.vgs-wiki-box .vgs-wiki-table th:first-child,
+.vgs-wiki-box .vgs-wiki-table td:first-child {
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  box-sizing: border-box;
+  line-height: 1 !important;
+}
