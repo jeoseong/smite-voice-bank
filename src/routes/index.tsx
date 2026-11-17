@@ -6,7 +6,7 @@ import "../wiki/smite.css";
 export const Route = createFileRoute("/")({
   component: Home,
   head: () => ({
-    meta: [{ title: "SMITE Wiki & Database" }],
+    meta: [{ title: "Smite VB" }],
     links: [
       {
         rel: "preload",
@@ -28,35 +28,74 @@ type WikiWindow = Window & {
 function Home() {
   useEffect(() => {
     const w = window as WikiWindow;
-    const boot = () => w.bootSmiteWiki?.();
+    let cancelled = false;
+    let script: HTMLScriptElement | null = null;
+
+    const onError = (event: ErrorEvent) => {
+      console.error(
+        "[SMITE Wiki] Erro JavaScript:",
+        event.message,
+        event.filename,
+        event.lineno
+      );
+    };
+
+    const onRejection = (event: PromiseRejectionEvent) => {
+      console.error("[SMITE Wiki] Promise rejeitada:", event.reason);
+    };
+
+    const boot = () => {
+      if (cancelled) return;
+      if (typeof w.bootSmiteWiki !== "function") {
+        console.error("[SMITE Wiki] bootSmiteWiki não está disponível.");
+        return;
+      }
+      w.bootSmiteWiki();
+    };
+
+    const onReady = () => boot();
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
 
     if (w.__smiteWikiLoaded) {
       boot();
-      return;
+    } else if (w.__smiteWikiLoading) {
+      window.addEventListener("smite-wiki-ready", onReady);
+    } else {
+      w.__smiteWikiLoading = true;
+      script = document.createElement("script");
+      script.src = "/smite/wiki.js?v=5";
+      script.async = false;
+
+      script.onload = () => {
+        w.__smiteWikiLoaded = true;
+        w.__smiteWikiLoading = false;
+        window.dispatchEvent(new Event("smite-wiki-ready"));
+        boot();
+      };
+
+      script.onerror = () => {
+        w.__smiteWikiLoading = false;
+        console.error("[SMITE Wiki] Falha ao carregar:", script?.src);
+      };
+
+      document.body.appendChild(script);
     }
 
-    if (w.__smiteWikiLoading) {
-      const onReady = () => boot();
-      window.addEventListener("smite-wiki-ready", onReady, { once: true });
-      return () => window.removeEventListener("smite-wiki-ready", onReady);
-    }
-
-    w.__smiteWikiLoading = true;
-    const script = document.createElement("script");
-    script.src = "/smite/wiki.js";
-    script.async = false;
-    script.onload = () => {
-      w.__smiteWikiLoaded = true;
-      window.dispatchEvent(new Event("smite-wiki-ready"));
-      boot();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+      window.removeEventListener("smite-wiki-ready", onReady);
     };
-    document.body.appendChild(script);
   }, []);
 
   return (
     <div
       id="smite-app"
       className="smite-app on-screen-main"
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: bodyHtml }}
     />
   );

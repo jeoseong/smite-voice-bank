@@ -2,7 +2,7 @@
   <div class="smite-top-hud">
     <div class="hud-left">
       <button class="smite-back-btn" id="backBtn" onclick="handleBack()">◄</button>
-      <div class="wiki-title">SMITE WIKI & DATABASE</div>
+      <div class="wiki-title">Smite VB</div>
     </div>
     <div id="mainBgUploadHeader" class="edit-only">
       <label class="file-upload-btn smite-btn-sm" style="position:relative; overflow:hidden; display:inline-block;">
@@ -26,9 +26,8 @@
     <!-- ROSTER DE SELEÇÃO DE DEUS -->
     <div class="screen-roster" id="screenRoster">
       <div class="roster-header">
-        <span id="rosterTitle">SELECIONE UM DEUS</span>
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="rosterSearch" class="smite-input" style="max-width: 200px;" placeholder="🔍 Buscar Deus..." oninput="renderRoster()">
+        <div style="display:flex; gap:10px; width:100%; justify-content:flex-end; align-items:center;">
+          <input type="text" id="rosterSearch" class="smite-input" style="max-width: 240px;" placeholder="" aria-label="Buscar deus" oninput="renderRoster()">
           <button class="smite-btn-sm edit-only" onclick="openGodModal(null)">+ Novo Deus</button>
         </div>
       </div>
@@ -51,7 +50,7 @@
         </div>
 
         <div class="god-panel-card" id="godTabAbout">
-          <button class="card-edit-btn edit-only" onclick="openAboutModal()">✏️</button>
+          <button class="card-edit-btn edit-only" onclick="openAboutModal()" aria-label="Editar informações" title="Editar informações"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
           
           <div class="about-icons-row">
             <div class="about-icon-item">
@@ -78,7 +77,7 @@
 
         <div class="god-panel-card" id="godTabSkins" style="display:none;">
           <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom: 4px;">
-            <button class="smite-btn-sm edit-only" onclick="openSkinModal(event, null)">+ Adicionar Skin</button>
+            <button class="smite-btn-sm edit-only add-skin-btn" onclick="openSkinModal(event, null)" aria-label="Adicionar aparência" title="Adicionar aparência">+</button>
           </div>
           <div class="gods-grid" id="godSkinsGrid"></div>
         </div>
@@ -86,7 +85,7 @@
         <div class="god-panel-card" id="godTabLore" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="color:var(--wiki-gold-title); font-size:0.95rem;">HISTÓRIA COMPLETA</span>
-            <button class="smite-btn-sm edit-only" onclick="openLoreModal()">✏️ Editar História</button>
+            <button class="smite-btn-sm edit-only" onclick="openLoreModal()"><img class="smite-action-icon" src="/smite-icons/S2_Stat_AllItems.png" alt=""> Editar História</button>
           </div>
           <div id="godLoreText" style="font-size:0.88rem; color:#cbd5e1; line-height:1.6; margin-top:8px; white-space:pre-wrap;"></div>
         </div>
@@ -102,7 +101,7 @@
           <img id="vpImage" class="wiki-god-image" src="" alt="Skin">
           
           <div class="wiki-summary-box">
-            <button class="card-edit-btn edit-only" onclick="openVpHeaderModal()">✏️</button>
+            <button class="card-edit-btn edit-only" onclick="openVpHeaderModal()" aria-label="Editar pacote de voz" title="Editar pacote de voz"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
             <div class="wiki-summary-title">Informações</div>
             <table class="wiki-summary-table">
               <tr>
@@ -116,10 +115,17 @@
             </table>
           </div>
 
+          <div id="vpSkinSelectionPanel" style="display:block; background:transparent; border:0; padding:8px 0;">
+            <div class="vp-skins-heading">
+              <h4 style="color:var(--wiki-gold-title); margin-bottom:12px; font-size:1.1rem; text-transform:uppercase;">APARÊNCIAS</h4>
+              <button type="button" class="smite-btn-sm edit-only add-skin-btn vp-add-skin-btn" onclick="openSkinModal(event, null)" aria-label="Adicionar aparência" title="Adicionar aparência">+</button>
+            </div>
+            <div class="gods-grid" id="vpSkinCardsGrid"></div>
+          </div>
+
           <div class="wiki-btn-menu active" id="btnVpGod" onclick="switchVPMode('god')">VOZ DO DEUS</div>
-          <div class="wiki-btn-menu" id="btnVpSkin" onclick="switchVPMode('skin')">VOZ POR APARÊNCIA</div>
           <div class="wiki-btn-menu" id="btnVpAnnouncer" onclick="switchVPMode('announcer')">Pacotes de locutor</div>
-          <div class="wiki-btn-menu" id="btnVpVGS" onclick="switchVPMode('vgs')">Sistema guiado por voz</div>
+          <div class="wiki-btn-menu" id="btnVpVGS" onclick="switchVPMode('vgs')">Comandos de voz</div>
         </div>
 
         <div class="vgs-tables-content" id="vpContentArea" style="position:relative;">
@@ -131,9 +137,6 @@
             <div id="voiceTreeContainer"></div>
           </div>
 
-          <div id="vpSkinSelectionPanel" style="display:none; background:#090e17; border:1px solid var(--wiki-gold-border); padding:16px;">
-            <h4 style="color:var(--wiki-gold-title); margin-bottom:12px; font-size:1.1rem; text-transform:uppercase;">APARÊNCIAS</h4>
-            <div class="gods-grid" id="vpSkinCardsGrid"></div>
           </div>
 
           <div id="vgsContainerGroup" style="display:none; flex-direction:column; gap:15px;">
@@ -144,7 +147,7 @@
 
       </div>
 
-      <button class="floating-page-edit-btn edit-only" id="globalPageEditBtn" onclick="handleGlobalEditClick()">✏️</button>
+      <button class="floating-page-edit-btn edit-only" id="globalPageEditBtn" style="display:none" onclick="handleGlobalEditClick()" aria-label="Editar página" title="Editar página"><img class="smite-action-icon" src="/smite-icons/S2_Stat_Passive.png" alt=""></button>
     </div>
 
   </div>
@@ -153,6 +156,7 @@
   <div class="smite-bottom-hud">
     <div class="chat-bar-left">
       <button class="chat-bar-audio-tab" onclick="openSection('voicebanks')">Áudio</button>
+      <div id="playbackNoticeStack" class="playback-notice-stack" aria-live="polite"></div>
       <div class="chat-bar-input-mock" id="statusAudio">De [PLAY] para escutar.</div>
     </div>
     <div class="chat-bar-right">
@@ -203,11 +207,12 @@
         <select id="modalTreeParentSelect" class="smite-select"></select>
       </div>
       <div class="form-group" id="groupTreeAudio">
-        <label>Arquivo de Áudio:</label>
-        <input type="file" id="modalTreeAudioFile" class="smite-input" accept="audio/*">
+        <label>Áudios (pode adicionar vários):</label>
+        <div id="treeAudioList" class="audio-chip-list"></div>
+        <input type="file" id="modalTreeAudioFile" class="smite-input" accept="audio/*" multiple onchange="onTreeAudioPicked(event)">
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <button class="smite-btn-danger" id="btnDeleteTreeItem" onclick="deleteTreeItem()" style="display:none;" title="Excluir">🗑️</button>
+        <button class="smite-btn-danger" id="btnDeleteTreeItem" onclick="deleteTreeItem()" style="display:none;" title="Excluir"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
         <div style="display:flex; gap:8px; margin-left:auto;">
           <button class="smite-btn-sm" onclick="closeModal('voiceCategoryLineModal')">Cancelar</button>
           <button class="smite-btn-sm" onclick="saveTreeModal()">Salvar</button>
@@ -220,39 +225,43 @@
     <div class="modal-box">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--wiki-gold-border); padding-bottom:6px;">
         <span style="color:var(--wiki-gold-title); font-size:1.1rem;">GERENCIAR VGS</span>
-        <button class="smite-btn-danger" id="btnDeleteEntireVgsBox" onclick="deleteEntireVgsBox()" title="Excluir Caixa VGS Inteira">🗑️</button>
+        <button class="smite-btn-danger" id="btnDeleteEntireVgsBox" onclick="deleteEntireVgsBox()" title="Excluir Caixa VGS Inteira"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
       </div>
       
-      <div class="form-group">
+      <div class="form-group" id="vgsTitleFieldGroup">
         <label>Título da Caixa VGS:</label>
         <input type="text" id="modalVgsBoxTitle" class="smite-input">
       </div>
       <hr style="border-color:var(--wiki-table-border); margin:4px 0;">
-      <div style="font-size:0.85rem; color:var(--wiki-gold-title);">COMANDO/LINHA DE ÁUDIO:</div>
-      <div class="form-group">
+      <div id="vgsRowSectionTitle" style="font-size:0.85rem; color:var(--wiki-gold-title);">COMANDO/LINHA DE ÁUDIO:</div>
+      <div class="form-group" id="vgsCodeFieldGroup">
         <label>Atalho VGS (ex: A, G, T, VV):</label>
         <input type="text" id="modalVgsCode" class="smite-input">
       </div>
-      <div class="form-group">
-        <label>Resultado / Texto:</label>
-        <input type="text" id="modalVgsResult" class="smite-input">
+      <div class="form-group" id="vgsResultFieldGroup">
+        <label>Resultado / Texto (Enter cria outro parágrafo):</label>
+        <textarea id="modalVgsResult" class="smite-textarea" rows="4"></textarea>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="vgsCategoryFieldGroup">
         <label>É Categoria de Resultado?</label>
-        <select id="modalVgsIsCat" class="smite-select">
+        <select id="modalVgsIsCat" class="smite-select" onchange="toggleVgsCategoryFields()">
           <option value="false">Não (Comando Normal)</option>
           <option value="true">Sim (Categoria de Resultado)</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Upload de Áudio (Arquivo da Coluna):</label>
-        <div style="display:flex; gap:6px;">
-          <input type="file" id="modalVgsAudioFile" class="smite-input" accept="audio/*">
-          <button class="smite-btn-danger" id="btnRemoveAudioFile" onclick="removeAudioFromVgsRow()" title="Remover apenas o áudio" style="display:none;">🗑️</button>
-        </div>
+      <div class="form-group" id="groupVgsLink" style="display:none;">
+        <label>Ao clicar no texto, ir para a caixa:</label>
+        <select id="modalVgsLinkBox" class="smite-select">
+          <option value="">Não levar a nenhuma caixa</option>
+        </select>
+      </div>
+      <div class="form-group" id="vgsAudioFieldGroup">
+        <label>Áudios (pode adicionar mais de um):</label>
+        <div id="vgsAudioList" class="audio-chip-list"></div>
+        <input type="file" id="modalVgsAudioFile" class="smite-input" accept="audio/*" multiple onchange="onVgsAudioPicked(event)">
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <button class="smite-btn-danger" id="btnDeleteVgsRow" onclick="deleteVgsRow()" style="display:none;" title="Excluir Comando">🗑️</button>
+        <button class="smite-btn-danger" id="btnDeleteVgsRow" onclick="deleteVgsRow()" style="display:none;" title="Excluir Comando"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
         <div style="display:flex; gap:8px; margin-left:auto;">
           <button class="smite-btn-sm" onclick="closeModal('editVgsModal')">Cancelar</button>
           <button class="smite-btn-sm" onclick="saveVgsModal()">Salvar</button>
@@ -264,14 +273,11 @@
   <div class="modal-overlay" id="aboutModal">
     <div class="modal-box">
       <div style="color:var(--wiki-gold-title); font-size:1.1rem; border-bottom:1px solid var(--wiki-gold-border); padding-bottom:6px;">EDITAR INFORMAÇÕES DO DEUS</div>
-      <div class="form-group"><label>Nome Panteão:</label><input type="text" id="aboutPantheonName" class="smite-input"></div>
-      <div class="form-group"><label>Ícone Panteão (Arquivo):</label><input type="file" id="aboutPantheonImgFile" class="smite-input" accept="image/*"></div>
-      <div class="form-group"><label>Nome Tipo:</label><input type="text" id="aboutTypeName" class="smite-input"></div>
-      <div class="form-group"><label>Ícone Tipo (Arquivo):</label><input type="file" id="aboutTypeImgFile" class="smite-input" accept="image/*"></div>
-      <div class="form-group"><label>Nome Classe:</label><input type="text" id="aboutClassName" class="smite-input"></div>
-      <div class="form-group"><label>Ícone Classe (Arquivo):</label><input type="file" id="aboutClassImgFile" class="smite-input" accept="image/*"></div>
+      <div class="form-group"><label>Ícone Panteão (Banco de imagens):</label><select id="aboutPantheonBank" class="smite-select"><option value="">Manter imagem atual</option><option value="/smite-icons/NewUI_Pantheon_Arthurian.png">Arthuriano</option><option value="/smite-icons/NewUI_Pantheon_Babylonian.png">Babilônico</option><option value="/smite-icons/NewUI_Pantheon_Celtic.png">Celta</option><option value="/smite-icons/NewUI_Pantheon_Chinese.png">Chinês</option><option value="/smite-icons/NewUI_Pantheon_Egyptian.png">Egípcio</option><option value="/smite-icons/NewUI_Pantheon_Great_Old_Ones.png">Grandes Antigos</option><option value="/smite-icons/NewUI_Pantheon_Greek.png">Grego</option><option value="/smite-icons/NewUI_Pantheon_Hindu.png">Hindu</option><option value="/smite-icons/NewUI_Pantheon_Maya.png">Maia</option><option value="/smite-icons/NewUI_Pantheon_Norse.png">Nórdico</option><option value="/smite-icons/NewUI_Pantheon_Polynesian.png">Polinésio</option><option value="/smite-icons/NewUI_Pantheon_Roman.png">Romano</option><option value="/smite-icons/NewUI_Pantheon_Slavic.png">Eslavo</option><option value="/smite-icons/NewUI_Pantheon_Voodoo.png">Vodu</option><option value="/smite-icons/NewUI_Pantheon_Yoruba.png">Iorubá</option><option value="/smite-icons/NewUI_Pantheon_Japanese.webp">Japonês</option></select></div>
+      <div class="form-group"><label>Ícone Tipo (Banco de imagens):</label><select id="aboutTypeBank" class="smite-select"><option value="">Manter imagem atual</option><option value="/smite-icons/NewUI_Type_Magical.png">Mágico</option><option value="/smite-icons/NewUI_Type_Physical.png">Físico</option></select></div>
+      <div class="form-group"><label>Ícone Classe (Banco de imagens):</label><select id="aboutClassBank" class="smite-select"><option value="">Manter imagem atual</option><option value="/smite-icons/NewUI_Class_Guardian.png">Guardião</option><option value="/smite-icons/NewUI_Class_Mage.png">Mago</option><option value="/smite-icons/NewUI_Class_Warrior.png">Guerreiro</option><option value="/smite-icons/NewUI_Class_Assassin.webp">Assassino</option><option value="/smite-icons/NewUI_Class_Unknown.png">Desconhecida</option><option value="/smite-icons/NewUI_Class_Hunter.webp">Caçador</option></select></div>
       <div class="form-group"><label>Frase Curta:</label><input type="text" id="aboutQuote" class="smite-input"></div>
-      <div class="form-group"><label>Dificuldade:</label><input type="text" id="aboutDifficulty" class="smite-input"></div>
+<div class="form-group"><label>Dificuldade:</label><select id="aboutDifficulty" class="smite-select"><option value="Não definida">Não definida</option><option value="Fácil">Fácil</option><option value="Média">Média</option><option value="Difícil">Difícil</option><option value="Muito difícil">Muito difícil</option></select></div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="smite-btn-sm" onclick="closeModal('aboutModal')">Cancelar</button>
         <button class="smite-btn-sm" onclick="saveAboutModal()">Salvar</button>
@@ -298,7 +304,7 @@
       <div class="form-group"><label>Título:</label><input type="text" id="modalGodTitle" class="smite-input"></div>
       <div class="form-group"><label>Imagem Padrão do Deus (Arquivo):</label><input type="file" id="modalGodImgFile" class="smite-input" accept="image/*"></div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <button class="smite-btn-danger" id="btnDeleteGod" onclick="deleteCurrentGod()" style="display:none;" title="Excluir Deus">🗑️</button>
+        <button class="smite-btn-danger" id="btnDeleteGod" onclick="deleteCurrentGod()" style="display:none;" title="Excluir Deus"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
         <div style="display:flex; gap:8px; margin-left:auto;">
           <button class="smite-btn-sm" onclick="closeModal('godModal')">Cancelar</button>
           <button class="smite-btn-sm" onclick="saveGodModal()">Salvar</button>
@@ -336,7 +342,7 @@
       </div>
       <div class="form-group"><label>Imagem da Skin (Arquivo):</label><input type="file" id="modalSkinImgFile" class="smite-input" accept="image/*"></div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        <button class="smite-btn-danger" id="btnDeleteSkinCard" onclick="deleteCurrentSkinCard()" style="display:none;" title="Excluir Skin">🗑️</button>
+        <button class="smite-btn-danger" id="btnDeleteSkinCard" onclick="deleteCurrentSkinCard()" style="display:none;" title="Excluir Skin"><img class="smite-action-icon" src="/smite-icons/S2_Complete_X.png" alt=""></button>
         <div style="display:flex; gap:8px; margin-left:auto;">
           <button class="smite-btn-sm" onclick="closeModal('editSkinModal')">Cancelar</button>
           <button class="smite-btn-sm" onclick="saveSkinModal()">Salvar</button>

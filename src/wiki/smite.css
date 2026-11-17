@@ -10,7 +10,7 @@
 
     :root {
       --wiki-gold-title: #C8B6A0;
-      --wiki-gold-border: #7C6448;
+      --wiki-gold-border: #846431;
       --wiki-gold-subtle: #4a3c22;
       --wiki-blue-text: #7FC0DC;
       --wiki-bg-dark: #090C11;
@@ -22,6 +22,9 @@
     .smite-app, .smite-app *, .smite-app *::before, .smite-app *::after {
       font-family: 'PenumbraFlareStd-Semibold', sans-serif !important;
       box-sizing: border-box;
+    }
+
+    .smite-app {
       user-select: none;
     }
 
@@ -103,7 +106,7 @@
       width: 100%;
       min-height: calc(100vh - 86px);
       display: flex;
-      background: linear-gradient(rgba(4,6,8,0.7), rgba(4,6,8,0.85)), var(--bg-main-img, url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop')) center/cover no-repeat;
+      background: linear-gradient(rgba(4,6,8,0.18), rgba(4,6,8,0.42)), var(--bg-main-img, url('/smite/lobby-bg.jpg')) center/cover no-repeat;
       padding: 30px 20px;
       align-items: center;
       flex-direction: column;
@@ -262,7 +265,7 @@
       filter: brightness(1.2);
     }
     .god-stage {
-      transition: background-image 0.4s ease-in-out;
+      transition: none;
     }
 
     .smite-skin-card:hover {
@@ -363,7 +366,7 @@
       position: relative;
       padding: 20px;
       border: 1px solid var(--wiki-gold-border);
-      transition: background-image 0.4s ease-in-out;
+      transition: none;
     }
 
     .god-panel-card {
@@ -600,6 +603,7 @@
       box-shadow: inset 0 0 0 1.5px #424C58;
       position: relative;
       z-index: 2;
+      text-align: center;
     }
 
     .vgs-wiki-table td {
@@ -646,6 +650,7 @@
     .vgs-outcome-cell {
       text-align: left;
       color: #ffffff;
+      white-space: pre-wrap;
     }
 
     .vgs-outcome-cell.is-category-result {
@@ -734,14 +739,22 @@
       align-items: center;
       justify-content: center;
       font-size: 1.3rem;
-      cursor: pointer;
+      cursor: grab;
       z-index: 150;
       box-shadow: 0 4px 15px rgba(0,0,0,0.8);
-      transition: transform 0.2s;
+      touch-action: none;
+      user-select: none;
     }
 
     .floating-page-edit-btn:hover {
-      transform: scale(1.1);
+      transform: scale(1.06);
+    }
+
+    .floating-page-edit-btn.is-dragging,
+    .floating-page-edit-btn.is-dragging:hover {
+      transform: none;
+      cursor: grabbing;
+      transition: none;
     }
 
     .modal-overlay {
@@ -783,13 +796,14 @@
 
     /* CHAT BAR - DESIGN EXATO FIDEDIGNO AO SMITE */
     .smite-bottom-hud {
-      height: 38px;
+      min-height: 42px;
+      height: auto;
       background: linear-gradient(180deg, #10141c 0%, #06080c 100%);
       border-top: 1px solid #7C6448;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 8px;
+      padding: 4px 8px;
       position: sticky;
       bottom: 0;
       z-index: 100;
@@ -801,6 +815,8 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      flex: 1;
+      min-width: 0;
     }
 
     .chat-bar-audio-tab {
@@ -820,8 +836,20 @@
       color: #94a3b8;
       padding: 3px 10px;
       font-size: 0.8rem;
-      min-width: 220px;
+      min-width: 0;
+      flex: 1;
       border-radius: 1px;
+      line-height: 1.35;
+      transition: opacity 0.55s ease;
+      opacity: 1;
+    }
+
+    .chat-bar-input-mock.is-fading {
+      opacity: 0;
+    }
+
+    .chat-bar-input-mock.is-playing {
+      color: #e7d3bc;
     }
 
     .chat-bar-right {
@@ -854,6 +882,2369 @@
     }
   
     .smite-app input,
-    .smite-app textarea {
-      user-select: text;
+    .smite-app textarea,
+    .smite-app [contenteditable="true"] {
+      user-select: text !important;
+      -webkit-user-select: text !important;
     }
+
+    .vgs-editable {
+      min-height: 1.2em;
+      white-space: pre-wrap;
+      outline: none;
+      cursor: text;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    .vgs-editable:focus {
+      background: rgba(127, 192, 220, 0.1);
+      box-shadow: inset 0 0 0 1px #7C6448;
+    }
+
+    .vgs-editable.is-link {
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .vgs-focus-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .audio-chip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .audio-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0c121c;
+      border: 1px solid #1E2532;
+      padding: 4px 8px;
+    }
+
+    .audio-chip span {
+      flex: 1;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .vgs-audio-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      justify-content: center;
+    }
+
+    .smite-skin-card.is-selected {
+      outline: 2px solid #7FC0DC;
+      outline-offset: 2px;
+    }
+
+
+/* Banco de ícones locais no painel Sobre */
+#aboutModal select[id$="Bank"] {
+  width: 100%;
+  min-height: 38px;
+  margin: 5px 0 8px;
+  padding: 7px 10px;
+  color: #e5e7eb;
+  background: rgba(9, 12, 17, .96);
+  border: 1px solid var(--wiki-gold-border);
+  border-radius: 3px;
+}
+#aboutModal select[id$="Bank"]:focus-visible {
+  outline: 2px solid var(--wiki-gold-title);
+  outline-offset: 2px;
+}
+
+
+/* Transição do fundo do painel de aparências */
+.god-stage {
+  isolation: isolate;
+}
+
+.god-stage-crossfade {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 450ms ease-in-out;
+}
+
+.god-stage > :not(.god-stage-crossfade) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Botão compacto para adicionar aparência */
+.add-skin-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* O lápis desliza ao encaixar na lateral */
+.floating-page-edit-btn {
+  transition: left 220ms ease, top 220ms ease, transform 160ms ease;
+}
+
+.floating-page-edit-btn.is-dragging,
+.floating-page-edit-btn.is-dragging:hover {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .god-stage-crossfade,
+  .floating-page-edit-btn {
+    transition: none !important;
+  }
+}
+
+
+/* SMITE VB: ajustes de layout e controles */
+.wiki-title {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.smite-action-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+#globalPageEditBtn .smite-action-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.wiki-side-box #vpSkinSelectionPanel {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: min(42vh, 390px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+#vpSkinCardsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#vpSkinCardsGrid > .god-card-container {
+  width: 100%;
+  min-width: 0;
+}
+
+#godTabSkins {
+  box-sizing: border-box;
+  max-height: min(72vh, 760px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+#godSkinsGrid {
+  min-height: 0;
+  max-height: min(62vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 3px;
+}
+
+@media (max-width: 850px) {
+  #godTabSkins {
+    max-height: 72vh;
+  }
+
+  #godSkinsGrid {
+    max-height: 62vh;
+  }
+
+  .wiki-side-box #vpSkinSelectionPanel {
+    max-height: 45vh;
+  }
+}
+
+/* O texto nativo do seletor de arquivo fica visualmente discreto. */
+.smite-app input[type="file"] {
+  color: #7d8795;
+  font-size: 0.88rem;
+}
+
+.smite-app input[type="file"]::file-selector-button {
+  color: #c0b29e;
+  background: #111722;
+  border: 1px solid #4b443a;
+  border-radius: 3px;
+  padding: 6px 10px;
+  margin-right: 10px;
+}
+/* SMITE VB UI adjustments 2026-10-17 */
+#vpSkinSelectionPanel {
+  box-sizing: border-box;
+  width: 100%;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 8px 0 !important;
+}
+
+#vpSkinSelectionPanel > h4 {
+  font-size: 0.95rem !important;
+  margin-bottom: 8px !important;
+}
+
+#vpSkinCardsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 8px !important;
+  align-items: start;
+}
+
+#vpSkinCardsGrid > .god-card-container {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+#vpSkinCardsGrid .smite-skin-card-wrapper {
+  width: 100%;
+  min-width: 0;
+}
+
+#vpSkinCardsGrid .skin-card-bottom-title {
+  font-size: 0.78rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.vgs-outcome-cell.is-category-result,
+.vgs-outcome-cell.is-category-result .vgs-category-highlight,
+.vgs-outcome-cell.is-category-result .vgs-editable {
+  color: #7FC0DC !important;
+}
+
+
+/* SMITE VB: ajustes finais de rolagem e cartões */
+.smite-app {
+  overscroll-behavior-y: none;
+}
+
+.smite-app * {
+  overscroll-behavior-y: none;
+}
+
+.screen-voicebank-view,
+.voicebank-container,
+.wiki-side-box,
+#vpContentArea,
+#vpSkinSelectionPanel,
+#vpSkinCardsGrid,
+#godTabSkins,
+#godSkinsGrid,
+#vgsTablesList,
+#voiceTreeContainer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#vpSkinSelectionPanel,
+#godSkinsGrid {
+  overscroll-behavior: none;
+  overflow-x: clip;
+}
+
+#vpSkinCardsGrid {
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 7px !important;
+}
+
+#vpSkinCardsGrid .smite-skin-card {
+  aspect-ratio: 0.9;
+}
+
+.vp-skins-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.vp-skins-heading h4 {
+  min-width: 0;
+}
+
+.vp-add-skin-btn {
+  flex: 0 0 34px;
+}
+
+
+/* SMITE VB: correções integradas de rolagem, skins e data */
+html,
+body {
+  min-height: 100%;
+  height: auto !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+}
+
+#smite-app.smite-app,
+.smite-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto !important;
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: visible !important;
+}
+
+.smite-viewport {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.screen-main-menu,
+.screen-voicebank-view {
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.voicebank-container {
+  min-height: 0;
+  align-items: start;
+}
+
+.wiki-side-box,
+#vpContentArea,
+#voiceTreeContainer,
+#vgsTablesList,
+#godSkinsGrid,
+#vpSkinSelectionPanel,
+#vpSkinCardsGrid {
+  min-height: 0;
+  touch-action: pan-y;
+}
+
+#vpSkinSelectionPanel {
+  width: 100%;
+  max-height: min(52vh, 410px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+
+#vpSkinCardsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content);
+  grid-auto-rows: max-content;
+  grid-auto-flow: row;
+  align-items: start;
+  gap: 8px !important;
+  max-height: min(45vh, 360px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+
+#vpSkinCardsGrid > .god-card-container,
+#vpSkinCardsGrid .smite-skin-card-wrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#vpSkinCardsGrid .smite-skin-card {
+  width: 100%;
+  aspect-ratio: 3 / 4 !important;
+  height: auto !important;
+  background-size: cover;
+  background-position: center top;
+}
+
+#vpSkinCardsGrid .skin-card-bottom-title {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+#vpReleaseDate {
+  color: #fff !important;
+}
+
+#godSkinsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+#godSkinsGrid .smite-skin-card {
+  aspect-ratio: 3 / 4 !important;
+  height: auto !important;
+  background-size: cover;
+  background-position: center top;
+}
+
+@media (max-width: 900px) {
+  .screen-voicebank-view {
+    padding: 12px;
+  }
+
+  .voicebank-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #vpSkinSelectionPanel,
+  #vpSkinCardsGrid,
+  #godSkinsGrid {
+    scroll-behavior: auto;
+  }
+}
+
+/* SMITE VB PATCH: correção aplicada v3 */
+html,
+body {
+  min-height: 100%;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  touch-action: pan-y;
+  overscroll-behavior-y: auto !important;
+}
+
+.smite-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  touch-action: pan-y;
+}
+
+.smite-app * {
+  overscroll-behavior-y: auto;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-content: start;
+  gap: 10px !important;
+  max-height: min(48vh, 420px);
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+
+#godSkinsGrid .smite-skin-card,
+#godSkinsGrid .smite-skin-card-wrapper {
+  min-width: 0;
+  aspect-ratio: 3 / 4;
+}
+
+#vpSkinCardsGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+#vpReleaseDate {
+  color: #fff !important;
+}
+
+@media (max-width: 600px) {
+  #godSkinsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    max-height: min(48vh, 420px);
+  }
+
+  #vpSkinCardsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* SMITE VB PATCH: rolagem por um dedo e aparencia padrao */
+html,
+body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#smite-app.smite-app,
+.smite-app {
+  height: auto !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+.smite-viewport {
+  flex: 0 0 auto !important;
+  min-height: 0;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+.screen-main-menu,
+.screen-roster,
+.screen-god-view,
+.screen-voicebank-view {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#godTabSkins {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-content: start;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom !important;
+  overscroll-behavior-y: contain;
+}
+
+#vpSkinSelectionPanel,
+#vpSkinCardsGrid {
+  touch-action: pan-y pinch-zoom !important;
+}
+
+/* SMITE VB: normalização da rolagem e do painel de aparências */
+html,
+body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#smite-app.smite-app,
+.smite-app,
+.smite-viewport,
+.screen-main-menu,
+.screen-roster,
+.screen-god-view,
+.screen-voicebank-view {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#vpSkinSelectionPanel {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#vpSkinCardsGrid,
+#godSkinsGrid {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+  overscroll-behavior: auto !important;
+  grid-template-rows: none !important;
+  align-content: start;
+}
+
+#godTabSkins {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* SMITE VB: correção localizada de rolagem da página e grade de aparências */
+html,
+body {
+  min-height: 100%;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#smite-app.smite-app {
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  justify-content: flex-start !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+.smite-viewport,
+.screen-main-menu,
+.screen-roster,
+.screen-god-view,
+.screen-voicebank-view {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+/* A lista de aparências é a única área de rolagem desse painel. */
+#vpSkinSelectionPanel {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#vpSkinCardsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content) !important;
+  grid-auto-rows: max-content !important;
+  grid-auto-flow: row !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 8px !important;
+  height: auto !important;
+  max-height: min(45vh, 360px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#vpSkinCardsGrid > .god-card-container,
+#vpSkinCardsGrid .smite-skin-card-wrapper {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+#vpSkinCardsGrid .smite-skin-card {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  background-size: cover;
+  background-position: center top;
+}
+
+
+/* SMITE VB: rolagem interna da grade de aparências dos Deuses */
+#godTabSkins {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content) !important;
+  grid-auto-rows: max-content !important;
+  grid-auto-flow: row !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 8px !important;
+  height: auto !important;
+  max-height: min(45vh, 360px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#godSkinsGrid > .god-card-container,
+#godSkinsGrid .smite-skin-card-wrapper {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  background-size: cover;
+  background-position: center top;
+}
+
+/* SMITE VB: grade compacta 3x2 de aparências dos Deuses */
+#godTabSkins {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  grid-auto-flow: row !important;
+  align-items: start !important;
+  align-content: start !important;
+  gap: 10px 8px !important;
+  height: auto !important;
+  max-height: min(70vh, 560px) !important;
+  padding: 3px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+}
+
+#godSkinsGrid > .god-card-container,
+#godSkinsGrid .smite-skin-card-wrapper {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  align-self: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  gap: 4px !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex: none !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 0.9 !important;
+  background-size: cover !important;
+  background-position: center !important;
+  overflow: hidden !important;
+}
+
+#godSkinsGrid .skin-card-bottom-title {
+  box-sizing: border-box !important;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 2px 0 0 !important;
+  padding: 0 2px !important;
+  font-size: clamp(0.58rem, 2.5vw, 0.76rem) !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.04em !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+#godSkinsGrid .skin-card-banner {
+  max-width: 90% !important;
+  font-size: clamp(0.55rem, 2.4vw, 0.78rem) !important;
+  line-height: 1.1 !important;
+  padding: 3px 2px !important;
+}
+
+#godSkinsGrid .skin-card-banner span {
+  max-width: 100% !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  overflow-wrap: anywhere !important;
+}
+
+
+/* SMITE VB: grade de aparências dos deuses, regras consolidadas */
+#godTabSkins {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 8px !important;
+  height: auto !important;
+  max-height: min(45vh, 360px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#godSkinsGrid > .god-card-container {
+  box-sizing: border-box !important;
+  display: block !important;
+  position: relative !important;
+  align-self: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  box-sizing: border-box !important;
+  display: flex !important;
+  position: relative !important;
+  flex: 0 0 auto !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  box-sizing: border-box !important;
+  display: flex !important;
+  position: relative !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
+}
+
+#godSkinsGrid .skin-card-bottom-title {
+  box-sizing: border-box !important;
+  display: block !important;
+  position: relative !important;
+  inset: auto !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 2.4em !important;
+  margin: 2px 0 4px !important;
+  padding: 0 3px 3px !important;
+  color: var(--wiki-gold-title) !important;
+  text-align: center !important;
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.04em !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  z-index: 2 !important;
+}
+
+#godSkinsGrid .skin-card-banner {
+  max-width: 90% !important;
+  font-size: clamp(0.55rem, 2.4vw, 0.78rem) !important;
+  line-height: 1.1 !important;
+  padding: 3px 2px !important;
+}
+
+#godSkinsGrid .skin-card-banner span {
+  max-width: 100% !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* SMITE VB: texto menor na barra de entrada do chat */
+.chat-bar-input-mock {
+  font-size: 0.65rem !important;
+  line-height: 1.2 !important;
+}
+
+/* SMITE VB: correção definitiva de sobreposição dos nomes das skins */
+#godSkinsGrid {
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-items: start !important;
+}
+
+#godSkinsGrid > .god-card-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  align-self: start !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  align-items: start !important;
+  justify-items: stretch !important;
+  gap: 5px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  display: flex !important;
+  position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .skin-card-bottom-title {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  display: block !important;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 2.4em !important;
+  margin: 0 0 5px !important;
+  padding: 0 2px 3px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card > .skin-card-banner {
+  z-index: 2 !important;
+}
+
+
+/* SMITE VB: botões de edição estáveis */
+.voice-line-item {
+  min-width: 0;
+  gap: 10px;
+}
+.voice-line-item > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.voice-line-item > div:last-child {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.voice-line-item .smite-btn-sm,
+.tree-category-title > .smite-btn-sm,
+.tree-subcategory-title > .smite-btn-sm {
+  box-sizing: border-box !important;
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.voice-line-item .smite-btn-sm .smite-action-icon,
+.tree-category-title > .smite-btn-sm .smite-action-icon,
+.tree-subcategory-title > .smite-btn-sm .smite-action-icon {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+}
+
+/* SMITE VB: cartões de aparência, três colunas */
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 10px !important;
+  max-height: min(68vh, 720px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+}
+#godSkinsGrid > .god-card-container {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  gap: 5px !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  gap: 5px !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  aspect-ratio: 3 / 4 !important;
+  height: auto !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper > .skin-card-bottom-title {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 2.4em !important;
+  margin: 0 !important;
+  padding: 2px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+@media (max-width: 420px) {
+  #godSkinsGrid {
+    gap: 6px !important;
+  }
+}
+
+
+/* SMITE VB: histórico de reprodução separado da caixa atual */
+.chat-bar-left {
+  position: relative;
+  min-width: 0;
+}
+
+.playback-notice-stack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 5px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  max-height: 3.1em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.playback-notice-stack:not(.has-notices) {
+  display: none;
+}
+
+.playback-notice-stack .playback-notice-row {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: 0.52rem;
+  line-height: 1.15;
+  opacity: 0.72;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+
+.chat-bar-input-mock.has-playback-notices {
+  box-sizing: border-box !important;
+  height: 2.4em !important;
+  min-height: 2.4em !important;
+  max-height: 2.4em !important;
+  overflow: hidden !important;
+  position: relative;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+
+.chat-bar-input-mock .playback-current-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-height: 100%;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 0.62rem;
+  animation: smite-current-scroll 5s ease-in-out infinite alternate;
+}
+
+@keyframes smite-current-scroll {
+  0%, 15% { transform: translateY(0); }
+  85%, 100% { transform: translateY(calc(-1 * max(0px, 100% - 2.4em))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bar-input-mock .playback-current-text {
+    animation: none;
+  }
+}
+
+
+/* SMITE VB: configuração final consolidada da grade de aparências */
+#godTabSkins {
+  min-width: 0 !important;
+}
+#godSkinsGrid {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content) !important;
+  grid-auto-rows: max-content !important;
+  grid-auto-flow: row !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-height: min(68vh, 720px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+#godSkinsGrid > .god-card-container {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  align-content: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  gap: 5px !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  gap: 5px !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+}
+#godSkinsGrid .smite-skin-card-wrapper > .skin-card-bottom-title {
+  display: block !important;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 2.4em !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  padding: 2px !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+@media (max-width: 420px) {
+  #godSkinsGrid { gap: 6px !important; }
+}
+
+/* SMITE VB: histórico de áudio em ordem cronológica */
+.playback-notice-stack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 5px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  max-height: 3.1em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+.playback-notice-stack:not(.has-notices) { display: none; }
+.playback-notice-stack .playback-notice-row {
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: 0.52rem;
+  line-height: 1.15;
+  opacity: 0.72;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+.playback-notice-stack .playback-notice-row.is-oldest {
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+.chat-bar-input-mock.has-playback-notices {
+  box-sizing: border-box !important;
+  height: 2.4em !important;
+  min-height: 2.4em !important;
+  max-height: 2.4em !important;
+  overflow: hidden !important;
+  position: relative;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+.chat-bar-input-mock .playback-current-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 0.62rem;
+}
+.playback-current-text-inner {
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+}
+.playback-current-text.is-overflowing .playback-current-text-inner {
+  padding-right: 2rem;
+  animation: smite-horizontal-marquee var(--marquee-duration, 8s) ease-in-out infinite alternate;
+}
+@keyframes smite-horizontal-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-1 * var(--marquee-distance, 0px))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playback-current-text.is-overflowing .playback-current-text-inner {
+    animation: none !important;
+  }
+}
+
+
+/* SMITE VB: grade de Deuses em 3 colunas e duas fileiras visíveis */
+
+#godSkinsGrid {
+  box-sizing: border-box !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  grid-auto-flow: row !important;
+  align-content: start !important;
+  align-items: start !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#godSkinsGrid > .god-card-container {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+}
+
+#godSkinsGrid .skin-card-bottom-title {
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Notificações: mantêm o posicionamento existente nesta etapa. */
+.chat-bar-left {
+  position: relative;
+}
+
+#statusAudio {
+  position: relative;
+  z-index: 31;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  padding-left: 8px;
+}
+
+.playback-notice-stack {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: calc(100% + 5px) !important;
+  z-index: 32 !important;
+  justify-content: flex-end !important;
+}
+
+.playback-notice-stack .playback-notice-row {
+  text-align: left !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.chat-bar-input-mock.has-playback-notices {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+
+/* SMITE VB: ajuste final da grade de aparências 3x2 */
+#godTabSkins {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: none !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  align-items: start !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto;
+  max-height: none;
+  gap: 8px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#godSkinsGrid > .god-card-container {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+}
+
+#godSkinsGrid .skin-card-bottom-title {
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+}
+
+
+/* SMITE VB: alinhamento final dos cartões de aparências */
+#godSkinsGrid {
+  overflow-x: visible !important;
+  overflow-y: auto !important;
+  padding: 5px 5px 4px !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid > .god-card-container {
+  position: relative !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  padding: 2px !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  height: auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  gap: 4px !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card {
+  position: relative !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  overflow: visible !important;
+  background-position: center !important;
+  background-size: cover !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card > .skin-card-banner {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .skin-card-bottom-title {
+  position: relative !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-height: 1.2em !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+/* Espaço interno para o contorno de seleção não ser cortado nas bordas. */
+#godSkinsGrid .smite-skin-card.is-selected {
+  position: relative !important;
+  z-index: 3 !important;
+  outline-offset: 2px !important;
+}
+
+/* SMITE VB: correção definitiva dos cards de aparências */
+#godSkinsGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-auto-rows: max-content !important;
+  align-items: start !important;
+  padding: 5px 6px 6px !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid > .god-card-container {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  align-self: start !important;
+  padding: 2px !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  gap: 4px !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  overflow: hidden !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .smite-skin-card > .skin-card-banner {
+  top: auto !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  z-index: 2 !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper > .skin-card-bottom-title {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 2.4em !important;
+  margin: 0 !important;
+  padding: 0 2px 3px !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  box-sizing: border-box !important;
+}
+
+/* Pacote de Voz: contorno de seleção sem corte nas bordas */
+#vpSkinSelectionPanel {
+  padding: 5px !important;
+  box-sizing: border-box !important;
+}
+
+#vpSkinCardsGrid {
+  padding: 4px !important;
+  box-sizing: border-box !important;
+}
+
+#vpSkinCardsGrid .smite-skin-card.is-selected {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 0 0 2px #7FC0DC !important;
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+/* SMITE VB: separa a altura da imagem da altura do cartão completo */
+#godSkinsGrid > .god-card-container {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  align-self: start !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#godSkinsGrid .skin-card-bottom-title {
+  position: relative !important;
+  display: -webkit-box !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 3.6em !important;
+  max-height: 3.6em !important;
+  margin-top: 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1.2em !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  text-overflow: ellipsis !important;
+}
+
+
+/* SMITE VB: teste para eliminar flashes nos cards de aparências */
+#godSkinsGrid .smite-skin-card {
+  animation: none !important;
+  transition: none !important;
+  will-change: auto !important;
+}
+
+#godSkinsGrid .smite-skin-card:active,
+#godSkinsGrid .smite-skin-card:hover {
+  filter: none !important;
+  transform: none !important;
+}
+
+
+/* TESTE TEMPORÁRIO: diagnosticar flash na troca das abas dos deuses */
+#godTabAbout,
+#godTabSkins,
+#godTabLore {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* TESTE TEMPORÁRIO: diagnosticar desaparecimento de conteúdo */
+html.smite-flash-diagnostic *,
+html.smite-flash-diagnostic *::before,
+html.smite-flash-diagnostic *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* TESTE TEMPORÁRIO GLOBAL: flash durante rolagem e troca de abas */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+
+/* SMITE VB: layout estável da grade de aparências */
+#godTabSkins {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content) !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  align-items: start !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  max-height: min(45vh, 360px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y pinch-zoom !important;
+  scrollbar-width: thin;
+}
+
+#godSkinsGrid > .god-card-container {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  align-self: start !important;
+  overflow: visible !important;
+}
+
+#godSkinsGrid .smite-skin-card {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 3 / 4 !important;
+  box-sizing: border-box !important;
+}
+
+
+/* SMITE VB: altura da grade calculada pela largura */
+#godTabSkins {
+  container-type: inline-size;
+}
+
+#godSkinsGrid {
+  max-height: calc(100cqw + 12px) !important;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(2, max-content) !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  padding-bottom: 0 !important;
+}
+
+
+/* SMITE VB: sobreposição textual das notificações v1 */
+.chat-bar-input-mock.has-playback-notices {
+  position: relative !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  justify-content: flex-start !important;
+  padding-left: 8px !important;
+  text-align: left !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.chat-bar-input-mock.has-playback-notices .playback-notice-overlay {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  text-align: left;
+  line-height: 1.15;
+  font-size: 0.62rem;
+  opacity: 0.68;
+  pointer-events: none;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.chat-bar-input-mock.has-playback-notices
+.playback-notice-overlay.is-oldest {
+  opacity: 0.42;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
+}
+
+.chat-bar-input-mock.has-playback-notices .playback-current-text {
+  position: relative;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.chat-bar-input-mock.has-playback-notices .playback-current-text-inner {
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bar-input-mock.has-playback-notices
+  .playback-current-text-inner {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+
+
+/* SMITE VB: notificações empilhadas alinhadas v2 */
+.playback-notice-overlay {
+  display: none !important;
+}
+
+#playbackNoticeStack.playback-notice-stack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 5px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 2px;
+  max-height: 3.1em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 32;
+}
+
+#playbackNoticeStack.playback-notice-stack:not(.has-notices) {
+  display: none;
+}
+
+#playbackNoticeStack .playback-notice-row {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left !important;
+  font-size: .52rem;
+  line-height: 1.15;
+  opacity: .68;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+#playbackNoticeStack .playback-notice-row.is-oldest {
+  opacity: 1 !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#statusAudio .playback-current-text {
+  position: relative;
+  z-index: 31;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+#statusAudio .playback-current-text-inner {
+  display: inline-block;
+  max-width: none;
+  white-space: nowrap;
+}
+
+
+
+/* SMITE VB: alinhamento preciso das notificações v3 */
+#playbackNoticeStack.playback-notice-stack {
+  left: 0 !important;
+  right: 0 !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+}
+
+#playbackNoticeStack .playback-notice-row {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  line-height: 1.15 !important;
+  text-align: left !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row.is-oldest {
+  opacity: 1 !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#statusAudio .playback-current-text {
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+
+
+/* SMITE VB: posicionamento relativo ao texto atual v4 */
+.chat-bar-left {
+  position: relative !important;
+  min-width: 0;
+}
+
+#playbackNoticeStack.playback-notice-stack {
+  position: absolute !important;
+  top: 0;
+  bottom: auto !important;
+  left: 0;
+  right: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 0 !important;
+  max-height: 3.1em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 32;
+}
+
+#playbackNoticeStack.playback-notice-stack:not(.has-notices) {
+  display: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left !important;
+  font-size: .52rem;
+  line-height: 1.15;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row.is-oldest {
+  opacity: 1 !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#statusAudio .playback-current-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+
+
+/* SMITE VB: pilha alinhada diretamente acima do texto atual v5 */
+.chat-bar-left {
+  position: relative !important;
+  min-width: 0;
+}
+
+#playbackNoticeStack.playback-notice-stack {
+  position: absolute !important;
+  box-sizing: border-box !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 0 !important;
+  max-height: 3.1em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 32;
+}
+
+#playbackNoticeStack.playback-notice-stack:not(.has-notices) {
+  display: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row {
+  display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left !important;
+  font-size: .62rem;
+  line-height: 1.15;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row.is-oldest {
+  opacity: 1 !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#statusAudio .playback-current-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+.playback-notice-overlay {
+  display: none !important;
+}
+
+
+/* SMITE VB: degradê sutil apenas na parte superior da notificação mais antiga */
+#playbackNoticeStack .playback-notice-row {
+  opacity: 1 !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#playbackNoticeStack .playback-notice-row.is-oldest {
+  opacity: 1 !important;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, .62) 0%,
+    rgba(0, 0, 0, .88) 24%,
+    #000 55%,
+    #000 100%
+  ) !important;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, .62) 0%,
+    rgba(0, 0, 0, .88) 24%,
+    #000 55%,
+    #000 100%
+  ) !important;
+}
+
+/* SMITE VB: desaparecimento suave das notificações antigas */
+#playbackNoticeStack .playback-notice-row {
+  animation: smite-notice-enter 220ms ease-out both;
+}
+
+#playbackNoticeStack .playback-notice-row.is-notice-leaving {
+  animation: smite-notice-leave 420ms ease-in both;
+  pointer-events: none;
+}
+
+@keyframes smite-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes smite-notice-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #playbackNoticeStack .playback-notice-row,
+  #playbackNoticeStack .playback-notice-row.is-notice-leaving {
+    animation-duration: 1ms;
+  }
+}
+
+/* SMITE VB: marquee horizontal da fala mais recente */
+#statusAudio .playback-current-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#statusAudio .playback-current-text-inner {
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  transform: translateX(0);
+}
+
+#statusAudio .playback-current-text.is-overflowing
+.playback-current-text-inner {
+  animation: smite-playback-marquee-loop 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes smite-playback-marquee-loop {
+  0%, 12% {
+    transform: translateX(0);
+  }
+  44%, 56% {
+    transform: translateX(calc(0px - var(--smite-marquee-distance)));
+  }
+  88%, 100% {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statusAudio .playback-current-text-inner {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+}
+
+/* SMITE VB: marquee horizontal consolidado v2 */
+#statusAudio .playback-current-text {
+  display: block !important;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+#statusAudio .playback-current-text-inner {
+  display: inline-block;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+}
+
+#statusAudio .playback-current-text.is-overflowing > .playback-current-text-inner {
+  animation: smite-playback-marquee-loop var(--marquee-duration, 12s) linear infinite !important;
+  will-change: transform;
+}
+
+@keyframes smite-playback-marquee-loop {
+  0%, 8% {
+    transform: translateX(0);
+  }
+  48%, 52% {
+    transform: translateX(calc(-1 * var(--smite-marquee-distance, 0px)));
+  }
+  92%, 100% {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statusAudio .playback-current-text-inner {
+    animation: none !important;
+    transform: none !important;
+    will-change: auto;
+  }
+}
+
+/* SMITE VB: opacidade lateral do marquee */
+#statusAudio .playback-current-text.is-overflowing {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.65) 3%,
+    #000 9%,
+    #000 91%,
+    rgba(0, 0, 0, 0.65) 97%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(0, 0, 0, 0.65) 3%,
+    #000 9%,
+    #000 91%,
+    rgba(0, 0, 0, 0.65) 97%,
+    transparent 100%
+  );
+}
+
+/* SMITE VB: ajuste visual VGS, Outcome e botões de áudio */
+.vgs-outside-title,
+.vgs-wiki-table th {
+  color: #D6B68F !important;
+}
+
+.vgs-code-cell.is-cat-code,
+.vgs-outcome-cell.is-category-result,
+.vgs-outcome-cell.is-category-result .vgs-editable {
+  color: #72C5E7 !important;
+}
+
+/* Contorno externo fino e sombra interna mais evidente */
+.vgs-wiki-box {
+  border: 0.7px solid #846431 !important;
+}
+
+.vgs-audio-btns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.vgs-play-double-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #72C5E7 !important;
+  font-size: 0;
+  line-height: 1;
+  padding: 3px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.vgs-play-double-btn .smite-audio-speaker {
+  display: block;
+  width: 25px;
+  height: 25px;
+}
+
+.vgs-play-double-btn:hover {
+  color: #A4E4FA !important;
+  filter: drop-shadow(0 0 4px rgba(114, 197, 231, 0.42));
+}
+
+.vgs-play-double-btn:focus-visible {
+  outline: 1px solid #72C5E7;
+  outline-offset: 2px;
+}
+
+/* SMITE VB: compactação somente da coluna de marcadores */
+.vgs-wiki-box .vgs-wiki-table td:first-child {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+
+/* SMITE VB: largura reduzida da coluna de marcadores */
+.vgs-wiki-box .vgs-wiki-table th:first-child,
+.vgs-wiki-box .vgs-wiki-table td:first-child {
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  box-sizing: border-box;
+  line-height: 1 !important;
+}
+
+
+/* SMITE VB: reduzir somente o espaçamento interno vertical do corpo */
+.vgs-wiki-box .vgs-wiki-table tbody td {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+
+/* SMITE VB: compactação vertical do corpo da tabela */
+.vgs-wiki-box .vgs-wiki-table tbody td {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 0.9 !important;
+}

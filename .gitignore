@@ -1,0 +1,6 @@
+.vercel/output/
+.vercel
+.env
+.env.*
+!.env.example
+.env*
